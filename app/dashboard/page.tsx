@@ -9,10 +9,12 @@ import RecentIncidents from "@/components/RecentIncidents";
 import ActivityFeed from "@/components/ActivityFeed";
 import SeaWeatherWidget from "@/components/SeaWeatherWidget";
 import IncidentDetailsPanel from "@/components/incidents/IncidentDetailsPanel";
+import ManualIncidentForm from "@/components/incidents/ManualIncidentForm";
 import { useIncidentStore, LIVE_INCIDENT_ID } from "@/lib/incident-store";
 import { useSpillSourceEstimate } from "@/lib/useSpillSourceEstimate";
 import { mockData } from "@/lib/mock-data";
 import type { Incident } from "@/lib/types";
+import { MapPin, X } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -27,6 +29,8 @@ function DashboardContent() {
   const { incidents, vessels, riskZones, activity, kpis, hasLiveIncident } = useIncidentStore();
   const [activeMapCoords, setActiveMapCoords] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<Incident | null>(null);
+  const [placementMode, setPlacementMode] = useState(false);
+  const [pendingCoords, setPendingCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [weatherPortId, setWeatherPortId] = useState(mockData.ports[0].id);
   const weatherPort =
     mockData.ports.find((p) => p.id === weatherPortId) || mockData.ports[0];
@@ -68,6 +72,32 @@ function DashboardContent() {
       <div className={`dashboard-scroll${selected ? " dashboard-scroll--panel-open" : ""}`}>
         <div className="dashboard-map-row">
           <section className="dashboard-map-wrap" aria-label="Caspian Sea incident map">
+            <button
+              type="button"
+              onClick={() => setPlacementMode((v) => !v)}
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                zIndex: 1000,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "none",
+                fontSize: 12,
+                fontWeight: 650,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                background: placementMode ? "var(--color-high)" : "var(--accent)",
+                color: "var(--bg-elevated)",
+                boxShadow: "0 4px 12px rgba(43,45,66,0.25)",
+              }}
+            >
+              {placementMode ? <X size={14} /> : <MapPin size={14} />}
+              {placementMode ? "Cancel" : "Report Spill"}
+            </button>
             <MapPanel
               incidents={incidents}
               vessels={mapVessels}
@@ -77,6 +107,11 @@ function DashboardContent() {
               focusedIncidentId={selected?.id ?? null}
               sourceEstimates={sourceEstimates}
               onIncidentSelect={handleIncidentSelect}
+              placementMode={placementMode}
+              onMapClick={(lat, lng) => {
+                setPendingCoords({ lat, lng });
+                setPlacementMode(false);
+              }}
             />
           </section>
 
@@ -128,6 +163,18 @@ function DashboardContent() {
       </div>
 
       <IncidentDetailsPanel incident={selected} onClose={() => setSelected(null)} />
+
+      {pendingCoords && (
+        <ManualIncidentForm
+          lat={pendingCoords.lat}
+          lng={pendingCoords.lng}
+          onClose={() => setPendingCoords(null)}
+          onCreated={(incident) => {
+            setPendingCoords(null);
+            setSelected(incident);
+          }}
+        />
+      )}
     </>
   );
 }

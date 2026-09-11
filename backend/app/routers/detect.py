@@ -19,6 +19,7 @@ router = APIRouter(prefix="/detect", tags=["detect"])
 @router.post("")
 def detect():
     raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Detection model not wired up yet — pending ML integration.",
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="AI detection is under active development by our ML team — check back soon. "
+        "In the meantime, incidents can be logged manually from the dashboard map.",
     )

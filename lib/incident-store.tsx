@@ -95,6 +95,20 @@ type ApplyActionInput = {
   operatorName?: string;
 };
 
+export type ManualIncidentInput = {
+  title: string;
+  location: string;
+  lat: number;
+  lng: number;
+  areaM2: number;
+  risk: Incident["risk"];
+  spillSource: Incident["spillSource"];
+  estimatedCause: string;
+  notes?: string;
+};
+
+type CreateIncidentResult = { ok: true; incident: Incident } | { ok: false; error: string };
+
 type IncidentStoreValue = {
   incidents: Incident[];
   loading: boolean;
@@ -109,6 +123,7 @@ type IncidentStoreValue = {
   responseOps: ReturnType<typeof buildResponseOps>;
   getIncidentById: (id: string) => Incident | undefined;
   applyHumanAction: (input: ApplyActionInput) => void;
+  createIncident: (input: ManualIncidentInput) => Promise<CreateIncidentResult>;
   hasLiveIncident: boolean;
   simulateLiveIncident: () => void;
   resolveLiveIncident: () => void;
@@ -253,6 +268,40 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
     [incidents]
   );
 
+  const createIncident = useCallback(
+    async (input: ManualIncidentInput): Promise<CreateIncidentResult> => {
+      try {
+        const res = await fetch("/api/incidents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: input.title,
+            location: input.location,
+            lat: input.lat,
+            lng: input.lng,
+            areaM2: input.areaM2,
+            aiProbability: 0,
+            risk: input.risk,
+            spillSource: input.spillSource,
+            detectionSource: "Manual report",
+            estimatedCause: input.estimatedCause,
+            aiSummary: input.notes || "Manually reported by a duty operator from the dashboard map.",
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          return { ok: false, error: data?.error || `Failed to create incident (${res.status})` };
+        }
+        const created = normalizeIncident(await res.json());
+        setIncidents((prev) => [created, ...prev]);
+        return { ok: true, incident: created };
+      } catch {
+        return { ok: false, error: "Could not reach the server." };
+      }
+    },
+    []
+  );
+
   const simulateLiveIncident = useCallback(() => {
     setIncidents((prev) =>
       prev.some((i) => i.id === LIVE_INCIDENT_ID)
@@ -283,6 +332,7 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
       responseOps: buildResponseOps(incidents),
       getIncidentById,
       applyHumanAction,
+      createIncident,
       hasLiveIncident,
       simulateLiveIncident,
       resolveLiveIncident,
@@ -293,6 +343,7 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
     error,
     getIncidentById,
     applyHumanAction,
+    createIncident,
     hasLiveIncident,
     simulateLiveIncident,
     resolveLiveIncident,
