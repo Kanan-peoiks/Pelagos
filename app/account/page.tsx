@@ -61,7 +61,7 @@ export default function AccountPage() {
                 <InfoRow label="Role" value="Admin / Duty Operator" />
                 <InfoRow label="Organisation" value="SeaSentry Operations (demo)" />
                 <InfoRow label="Monitoring theatre" value="Caspian Sea · Azerbaijan" />
-                <InfoRow label="Auth mode" value="Local demo session" />
+                <InfoRow label="Auth mode" value="SeaSentry account session" />
               </div>
             </div>
           </div>
@@ -85,8 +85,8 @@ export default function AccountPage() {
                 }}
               >
                 <Shield size={16} color="var(--accent)" style={{ flexShrink: 0, marginTop: 2 }} />
-                Authentication is demo-only for this phase. A production identity provider can
-                replace the local session later.
+                Your session is authenticated against the SeaSentry backend and stays active
+                until you log out or it expires.
               </div>
 
               <button

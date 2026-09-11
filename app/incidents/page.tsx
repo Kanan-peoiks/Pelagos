@@ -251,7 +251,7 @@ function IncidentsContent() {
         <div className="panel" style={{ minHeight: 360 }}>
           <div className="panel-header">
             <span className="panel-title">Incident register</span>
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Demo dataset · not live</span>
+            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Synced with backend</span>
           </div>
           <div className="panel-body" style={{ overflowX: "auto" }}>
             <div

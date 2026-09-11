@@ -1,15 +1,17 @@
 // ============================================================
 // SeaSentry Authentication
 // ============================================================
-// Mock client-side auth for the current phase.
-// Replace `login` / `register` / `logout` bodies with real
-// backend calls (e.g. Spring Boot JWT / session cookies) later.
-// Keep the exported function signatures stable for UI pages.
+// Client-side helpers for the real backend-backed auth flow.
+// The actual JWT lives in an httpOnly cookie set by the
+// /api/auth/* route handlers — it is never touched by this file
+// or exposed to client JS. localStorage here only caches the
+// user's display info (name/email) and a UX hint so pages can
+// avoid a login-form flash; middleware.ts is the real gate.
 // ============================================================
 
 export const AUTH_STORAGE_KEY = "seasentry-auth";
 export const USER_STORAGE_KEY = "seasentry-user";
-export const AUTH_COOKIE_NAME = "seasentry-auth";
+export const AUTH_COOKIE_NAME = "seasentry_token";
 
 export type AuthUser = {
   name: string;
@@ -19,20 +21,6 @@ export type AuthUser = {
 export type AuthResult =
   | { ok: true; user: AuthUser }
   | { ok: false; error: string };
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function writeCookie(authenticated: boolean, remember: boolean) {
-  if (typeof document === "undefined") return;
-  if (authenticated) {
-    const maxAge = remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
-    document.cookie = `${AUTH_COOKIE_NAME}=1; path=/; max-age=${maxAge}; SameSite=Lax`;
-  } else {
-    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
-  }
-}
 
 function readStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
@@ -45,14 +33,6 @@ function readStoredUser(): AuthUser | null {
   }
 }
 
-/** Ensure cookie matches localStorage (migrates older sessions). */
-export function syncAuthCookie(): void {
-  if (typeof window === "undefined") return;
-  if (localStorage.getItem(AUTH_STORAGE_KEY) === "true") {
-    writeCookie(true, true);
-  }
-}
-
 export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
   return localStorage.getItem(AUTH_STORAGE_KEY) === "true";
@@ -60,12 +40,7 @@ export function isAuthenticated(): boolean {
 
 export function getCurrentUser(): AuthUser | null {
   if (!isAuthenticated()) return null;
-  return (
-    readStoredUser() ?? {
-      name: "Operator",
-      email: "operator@seasentry.az",
-    }
-  );
+  return readStoredUser();
 }
 
 export function validateEmail(email: string): string | null {
@@ -84,9 +59,15 @@ export function validatePassword(password: string): string | null {
   return null;
 }
 
-/**
- * Mock login. Replace with: POST /api/auth/login
- */
+async function parseErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    return data?.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function login(
   email: string,
   password: string,
@@ -98,24 +79,26 @@ export async function login(
   const passwordError = validatePassword(password);
   if (passwordError) return { ok: false, error: passwordError };
 
-  await delay(700);
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), password, remember }),
+    });
 
-  const existing = readStoredUser();
-  const user: AuthUser = {
-    name: existing?.email === email.trim() ? existing.name : email.trim().split("@")[0],
-    email: email.trim(),
-  };
+    if (!res.ok) {
+      return { ok: false, error: await parseErrorMessage(res, "Invalid email or password.") };
+    }
 
-  localStorage.setItem(AUTH_STORAGE_KEY, "true");
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-  writeCookie(true, remember);
-
-  return { ok: true, user };
+    const { user } = (await res.json()) as { user: AuthUser };
+    localStorage.setItem(AUTH_STORAGE_KEY, "true");
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    return { ok: true, user };
+  } catch {
+    return { ok: false, error: "Could not reach the server. Please try again." };
+  }
 }
 
-/**
- * Mock register. Replace with: POST /api/auth/register
- */
 export async function register(
   fullName: string,
   email: string,
@@ -136,23 +119,29 @@ export async function register(
     return { ok: false, error: "Passwords do not match." };
   }
 
-  await delay(800);
+  try {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: fullName.trim(), email: email.trim(), password }),
+    });
 
-  const user: AuthUser = {
-    name: fullName.trim(),
-    email: email.trim(),
-  };
+    if (!res.ok) {
+      return { ok: false, error: await parseErrorMessage(res, "Could not create account.") };
+    }
 
-  localStorage.setItem(AUTH_STORAGE_KEY, "true");
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-  writeCookie(true, true);
-
-  return { ok: true, user };
+    const { user } = (await res.json()) as { user: AuthUser };
+    localStorage.setItem(AUTH_STORAGE_KEY, "true");
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    return { ok: true, user };
+  } catch {
+    return { ok: false, error: "Could not reach the server. Please try again." };
+  }
 }
 
 export function logout(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(AUTH_STORAGE_KEY);
   localStorage.removeItem(USER_STORAGE_KEY);
-  writeCookie(false, false);
+  fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
 }
