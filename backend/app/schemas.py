@@ -105,3 +105,28 @@ class IncidentOut(CamelModel):
 class DecisionRequest(CamelModel):
     action: DecisionAction
     note: Optional[str] = None
+
+
+# ---- Reports ----------------------------------------------------------------
+
+
+class ReportCreate(CamelModel):
+    incident_id: str
+    incident_display_id: str
+    incident_title: str
+    team: str
+    boom_meters: float
+    sorbent_kg: float
+    oil_mass_kg: float
+    skimmer_units: float
+    vessel_count: float
+    duration_hours: float
+    estimated_cost_usd: float
+
+
+class ReportOut(ReportCreate):
+    id: str
+    generated_by: str
+    generated_at: datetime
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)

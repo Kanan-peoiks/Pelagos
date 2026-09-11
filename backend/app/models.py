@@ -51,3 +51,27 @@ class Incident(Base):
     response_status = Column(String, nullable=True)
     related_vessel_id = Column(String, nullable=True)
     affected_vessel_ids = Column(JSON, nullable=False, default=list)
+
+
+class Report(Base):
+    """A saved snapshot of a generated incident response report, so past
+    reports can be browsed later instead of only existing as a downloaded
+    PDF. Denormalizes a few incident fields (title/displayId) so the history
+    list reads fine even if the source incident later changes."""
+
+    __tablename__ = "reports"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    incident_id = Column(String, nullable=False)
+    incident_display_id = Column(String, nullable=False)
+    incident_title = Column(String, nullable=False)
+    generated_by = Column(String, nullable=False)
+    generated_at = Column(DateTime(timezone=True), server_default=func.now())
+    team = Column(String, nullable=False)
+    boom_meters = Column(Float, nullable=False)
+    sorbent_kg = Column(Float, nullable=False)
+    oil_mass_kg = Column(Float, nullable=False)
+    skimmer_units = Column(Float, nullable=False)
+    vessel_count = Column(Float, nullable=False)
+    duration_hours = Column(Float, nullable=False)
+    estimated_cost_usd = Column(Float, nullable=False)

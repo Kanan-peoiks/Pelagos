@@ -26,6 +26,11 @@ type Props = {
    * are enhanced (live and/or focused). */
   sourceEstimates?: Record<string, SpillSourceResult | null>;
   onIncidentSelect?: (incident: Incident) => void;
+  /** When true, the next map click reports its coordinates via onMapClick
+   * instead of the normal pan/zoom-only interaction — used for manually
+   * marking a new incident's location. */
+  placementMode?: boolean;
+  onMapClick?: (lat: number, lng: number) => void;
 };
 
 function riskColor(risk: Incident["risk"]) {
@@ -155,6 +160,8 @@ export default function MapPanel({
   focusedIncidentId,
   sourceEstimates,
   onIncidentSelect,
+  placementMode = false,
+  onMapClick,
 }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInst = useRef<L.Map | null>(null);
@@ -329,6 +336,24 @@ export default function MapPanel({
     }
   }, [activeMapCoords, loaded]);
 
+  useEffect(() => {
+    if (!mapInst.current || !loaded || !placementMode) return;
+    const map = mapInst.current;
+    const container = map.getContainer();
+    const previousCursor = container.style.cursor;
+    container.style.cursor = "crosshair";
+
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      onMapClick?.(e.latlng.lat, e.latlng.lng);
+    };
+    map.on("click", handleClick);
+
+    return () => {
+      map.off("click", handleClick);
+      container.style.cursor = previousCursor;
+    };
+  }, [placementMode, loaded, onMapClick]);
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       {!loaded && (
@@ -361,6 +386,28 @@ export default function MapPanel({
       )}
 
       <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+
+      {placementMode && (
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            background: "var(--accent)",
+            color: "var(--bg-elevated)",
+            borderRadius: 8,
+            padding: "8px 16px",
+            fontSize: 12,
+            fontWeight: 600,
+            boxShadow: "0 4px 12px rgba(43,45,66,0.25)",
+            pointerEvents: "none",
+          }}
+        >
+          Click on the map to mark the new incident&apos;s location
+        </div>
+      )}
 
       {/* Legend */}
       <div

@@ -142,6 +142,29 @@ function generateIncidentPdf(incident: Incident, materials: ResponseMaterials) {
   doc.save(`seasentry-incident-${incident.displayId.replace("#", "")}-report.pdf`);
 }
 
+/** Best-effort: record that this report was generated so it shows up in the
+ * report history later. Never blocks or surfaces errors to the PDF flow —
+ * the download already succeeded regardless of whether this save works. */
+function saveReportSnapshot(incident: Incident, materials: ResponseMaterials) {
+  fetch("/api/reports", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      incidentId: incident.id,
+      incidentDisplayId: incident.displayId,
+      incidentTitle: incident.title,
+      team: materials.team,
+      boomMeters: materials.boomMeters,
+      sorbentKg: materials.sorbentKg,
+      oilMassKg: materials.oilMassKg,
+      skimmerUnits: materials.skimmerUnits,
+      vesselCount: materials.vesselCount,
+      durationHours: materials.durationHours,
+      estimatedCostUsd: materials.estimatedCostUsd,
+    }),
+  }).catch((err) => console.error("saveReportSnapshot failed:", err));
+}
+
 type Props = {
   incident: Incident | null;
   onClose: () => void;
@@ -341,6 +364,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
     setTimeout(() => {
       generateIncidentPdf(live, materials);
       setPdfState("ready");
+      saveReportSnapshot(live, materials);
     }, 1200);
   };
 

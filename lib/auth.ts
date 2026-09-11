@@ -139,6 +139,24 @@ export async function register(
   }
 }
 
+/** Signs in as a fixed public demo account — no credentials needed. Used by
+ * the "Continue as guest" button so a pitch audience can reach the
+ * dashboard in one click. */
+export async function loginAsDemo(): Promise<AuthResult> {
+  try {
+    const res = await fetch("/api/auth/demo", { method: "POST" });
+    if (!res.ok) {
+      return { ok: false, error: await parseErrorMessage(res, "Could not start a demo session.") };
+    }
+    const { user } = (await res.json()) as { user: AuthUser };
+    localStorage.setItem(AUTH_STORAGE_KEY, "true");
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    return { ok: true, user };
+  } catch {
+    return { ok: false, error: "Could not reach the server. Please try again." };
+  }
+}
+
 export function logout(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(AUTH_STORAGE_KEY);
