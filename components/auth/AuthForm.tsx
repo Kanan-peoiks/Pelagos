@@ -4,8 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2, ArrowLeft } from "lucide-react";
-import { login, register, syncAuthCookie, isAuthenticated } from "@/lib/auth";
-import { useEffect } from "react";
+import { login, register } from "@/lib/auth";
 
 type Mode = "login" | "register";
 
@@ -25,16 +24,6 @@ export default function AuthForm({ mode }: Props) {
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    syncAuthCookie();
-    if (isAuthenticated()) {
-      router.replace("/dashboard");
-      return;
-    }
-    setReady(true);
-  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,14 +46,6 @@ export default function AuthForm({ mode }: Props) {
       nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard";
     router.push(safeNext);
   };
-
-  if (!ready) {
-    return (
-      <div className="auth-page">
-        <div className="auth-page-loading">Loading…</div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-page">
@@ -192,8 +173,8 @@ export default function AuthForm({ mode }: Props) {
           </p>
 
           <p className="auth-disclaimer">
-            Demo authentication for this phase. Credentials are stored locally in the browser and
-            are not a production security system.
+            Operational demo environment — use a real password, but avoid reusing one from
+            another account.
           </p>
         </div>
       </div>

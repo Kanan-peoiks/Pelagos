@@ -92,7 +92,7 @@ function AiAnalysisContent() {
         <div className="panel">
           <div className="panel-header">
             <span className="panel-title">AI analysis queue</span>
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Demo dataset · not live</span>
+            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Synced with backend</span>
           </div>
           <div className="panel-body" style={{ padding: 16, display: "grid", gap: 12 }}>
             {aiAnalyses.length === 0 && (
