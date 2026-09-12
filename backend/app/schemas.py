@@ -34,6 +34,15 @@ class LoginRequest(CamelModel):
 Role = Literal["viewer", "operator", "admin"]
 
 
+class ForgotPasswordRequest(CamelModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(CamelModel):
+    token: str
+    new_password: str
+
+
 class UserOut(CamelModel):
     id: str
     name: str

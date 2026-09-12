@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -6,8 +7,11 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import settings
 from app.deps import get_current_user, get_db
+from app.email_util import send_password_reset_email
 from app.rate_limit import enforce_login_rate_limit, record_login_failure, reset_login_attempts
 from app.security import create_access_token, hash_password, verify_password
+
+RESET_TOKEN_TTL_MINUTES = 30
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -106,3 +110,60 @@ def demo_login(db: Session = Depends(get_db)):
 
     token = create_access_token(subject=user.id)
     return schemas.TokenResponse(access_token=token, user=schemas.UserOut.model_validate(user, from_attributes=True))
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Always returns the same generic message regardless of whether the
+    email exists, to avoid leaking which addresses are registered."""
+    rate_limit_key = f"reset:{payload.email.strip().lower()}"
+    enforce_login_rate_limit(rate_limit_key)
+    record_login_failure(rate_limit_key)  # counts toward the rate limit either way
+
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    generic_response = {"message": "If that email is registered, a reset link has been sent."}
+
+    if user is None or user.is_demo:
+        return generic_response
+
+    reset_token = models.PasswordResetToken(
+        user_id=user.id,
+        token=secrets.token_urlsafe(32),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_TTL_MINUTES),
+    )
+    db.add(reset_token)
+    db.commit()
+
+    reset_url = f"{settings.frontend_url.rstrip('/')}/reset-password?token={reset_token.token}"
+    send_password_reset_email(user.email, reset_url)
+
+    return generic_response
+
+
+@router.post("/reset-password")
+def reset_password(payload: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    record = (
+        db.query(models.PasswordResetToken)
+        .filter(models.PasswordResetToken.token == payload.token)
+        .first()
+    )
+
+    invalid = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This reset link is invalid or has expired.")
+    if record is None or record.used:
+        raise invalid
+
+    expires_at = record.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise invalid
+
+    user = db.get(models.User, record.user_id)
+    if user is None:
+        raise invalid
+
+    user.password_hash = hash_password(payload.new_password)
+    record.used = True
+    db.commit()
+
+    return {"message": "Password updated — you can log in now."}

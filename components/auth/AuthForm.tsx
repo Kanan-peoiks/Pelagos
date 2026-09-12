@@ -132,14 +132,19 @@ export default function AuthForm({ mode }: Props) {
             )}
 
             {mode === "login" && (
-              <label className="auth-remember">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                Remember me
-              </label>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <label className="auth-remember">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                  />
+                  Remember me
+                </label>
+                <Link href="/forgot-password" style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  Forgot password?
+                </Link>
+              </div>
             )}
 
             {error && <div className="auth-error" role="alert">{error}</div>}

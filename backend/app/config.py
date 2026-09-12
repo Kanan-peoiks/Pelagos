@@ -11,6 +11,16 @@ class Settings(BaseSettings):
     # moment they register or log in — see auth.py's _maybe_promote_admin().
     admin_emails: str = ""
 
+    # Gmail SMTP for password-reset emails (app password, not the account
+    # password). Left blank, forgot-password requests are logged instead of
+    # sent — safe default for local dev without credentials configured.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    # Used to build the link inside the reset-password email.
+    frontend_url: str = "http://localhost:3000"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property
