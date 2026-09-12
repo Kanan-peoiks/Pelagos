@@ -13,6 +13,7 @@ import {
   Play,
 } from "lucide-react";
 import { loginAsDemo } from "@/lib/auth";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 const FEATURES = [
   {
@@ -73,6 +74,7 @@ export default function LandingPage() {
             </div>
           </Link>
           <nav className="landing-nav">
+            <ThemeToggle size={36} />
             <a
               href="https://seasentryinfo.vercel.app"
               target="_blank"

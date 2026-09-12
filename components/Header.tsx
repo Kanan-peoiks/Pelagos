@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { User, LogOut, Menu, CheckCircle2 } from "lucide-react";
 import { useIncidentStore } from "@/lib/incident-store";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 type Props = {
   onLogout?: () => void;
@@ -69,7 +70,7 @@ export default function Header({
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 20px",
-        background: "rgba(255, 255, 255, 0.92)",
+        background: "var(--glass-bg)",
         borderBottom: "1px solid var(--glass-border)",
         flexShrink: 0,
         zIndex: 50,
@@ -140,6 +141,7 @@ export default function Header({
       {/* Right — System status + user */}
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
         <LiveClock />
+        <ThemeToggle />
 
         <button
           type="button"

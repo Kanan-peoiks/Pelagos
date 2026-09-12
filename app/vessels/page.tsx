@@ -149,7 +149,11 @@ function VesselsContent() {
 
             {filtered.length === 0 && (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-secondary)" }}>
-                No vessels match your filters.
+                {vessels.length === 0
+                  ? "No vessel data yet."
+                  : search.trim()
+                    ? `No results for "${search.trim()}" — check the spelling or try a different search term.`
+                    : "No vessels match the selected filters."}
               </div>
             )}
 

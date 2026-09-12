@@ -260,7 +260,9 @@ function AdminContent() {
                   {filteredUsers.length === 0 && (
                     <tr>
                       <td colSpan={5} style={{ padding: "24px 12px", textAlign: "center", color: "var(--text-secondary)" }}>
-                        No users match your search.
+                        {users.length === 0
+                          ? "No users yet."
+                          : `No results for "${userSearch.trim()}" — check the spelling or try a different search term.`}
                       </td>
                     </tr>
                   )}
