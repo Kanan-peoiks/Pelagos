@@ -163,8 +163,13 @@ class FeedbackOut(FeedbackCreate):
     user_name: str
     user_email: str
     created_at: datetime
+    resolved: bool = False
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+
+class FeedbackResolveRequest(CamelModel):
+    resolved: bool
 
 
 # ---- Admin --------------------------------------------------------------------

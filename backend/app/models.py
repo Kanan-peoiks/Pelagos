@@ -118,3 +118,4 @@ class Feedback(Base):
     kind = Column(String, nullable=False)  # "feedback" | "suggestion" | "question"
     message = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    resolved = Column(Boolean, nullable=False, default=False)

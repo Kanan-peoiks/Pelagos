@@ -345,6 +345,18 @@ html, body {
   overflow: auto;
 }
 
+/* Opt out of the default flex-fill/internal-scroll pattern above for
+   panels that ARE a page's main content (list/table pages) — they should
+   render at natural height and let .dashboard-scroll scroll the whole
+   page, instead of trapping the scroll inside one bordered card. Only the
+   dashboard's side-by-side twin widgets (Recent Incidents / Activity
+   Feed, which set height:100% to stay aligned) keep the default. */
+.panel-static > .panel-body {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow-y: visible;
+}
+
 /* Auth (kept) */
 .auth-input {
   width: 100%;

@@ -1,8 +1,11 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.deps import get_current_user, get_db, require_admin
+from app.email_util import send_feedback_thanks_email
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
@@ -29,6 +32,14 @@ def create_feedback(
     db.add(feedback)
     db.commit()
     db.refresh(feedback)
+
+    try:
+        send_feedback_thanks_email(current_user.email, current_user.name, payload.kind, payload.message)
+    except Exception:
+        # A failed thank-you email should never fail the feedback submission
+        # itself — it's already saved either way.
+        logging.getLogger("seasentry.email").exception("Failed to send feedback thank-you email to %s", current_user.email)
+
     return feedback
 
 
@@ -38,3 +49,20 @@ def list_feedback(
     _admin: models.User = Depends(require_admin),
 ):
     return db.query(models.Feedback).order_by(models.Feedback.created_at.desc()).all()
+
+
+@router.patch("/{feedback_id}", response_model=schemas.FeedbackOut)
+def resolve_feedback(
+    feedback_id: str,
+    payload: schemas.FeedbackResolveRequest,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(require_admin),
+):
+    feedback = db.get(models.Feedback, feedback_id)
+    if feedback is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
+
+    feedback.resolved = payload.resolved
+    db.commit()
+    db.refresh(feedback)
+    return feedback

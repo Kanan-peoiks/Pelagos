@@ -6,6 +6,7 @@ without credentials), emails are logged instead of sent so the flow still
 works end-to-end for testing.
 """
 
+import html
 import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -52,6 +53,27 @@ def send_password_reset_email(to: str, reset_url: str) -> None:
           </p>
           <p style="color:#666;font-size:12px;">This link expires in 30 minutes.
           If the button doesn't work, copy this link: {reset_url}</p>
+        </div>
+        """,
+    )
+
+
+def send_feedback_thanks_email(to: str, name: str, kind: str, message: str) -> None:
+    safe_name = html.escape(name)
+    safe_kind = html.escape(kind)
+    safe_message = html.escape(message)
+    send_email(
+        to=to,
+        subject="Thanks for your feedback — SeaSentry",
+        html_body=f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;">
+          <h2 style="color:#2B2D42;">Thanks, {safe_name}!</h2>
+          <p>We received your {safe_kind} and appreciate you taking the time to send it:</p>
+          <blockquote style="margin:12px 0;padding:12px 16px;border-left:3px solid #81B29A;
+                              background:#FBF9F5;color:#2B2D42;font-style:italic;">
+            {safe_message}
+          </blockquote>
+          <p style="color:#666;font-size:12px;">— The SeaSentry team</p>
         </div>
         """,
     )

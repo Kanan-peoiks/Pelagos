@@ -131,7 +131,7 @@ function ReportsContent() {
         </section>
 
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }} className="report-panels">
-          <div className="panel">
+          <div className="panel panel-static">
             <div className="panel-header">
               <span className="panel-title">Operational snapshot</span>
             </div>
@@ -144,7 +144,7 @@ function ReportsContent() {
             </div>
           </div>
 
-          <div className="panel">
+          <div className="panel panel-static">
             <div className="panel-header">
               <span className="panel-title">Risk distribution</span>
             </div>
@@ -178,7 +178,7 @@ function ReportsContent() {
           </div>
         </div>
 
-        <div className="panel" style={{ marginTop: 16 }}>
+        <div className="panel panel-static" style={{ marginTop: 16 }}>
           <div className="panel-header">
             <span className="panel-title">
               <History size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
