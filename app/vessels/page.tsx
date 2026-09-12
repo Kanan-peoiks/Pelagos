@@ -113,7 +113,7 @@ function VesselsContent() {
           }
         />
 
-        <div className="panel">
+        <div className="panel panel-static">
           <div className="panel-header">
             <span className="panel-title">Vessel register</span>
           </div>

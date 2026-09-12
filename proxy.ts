@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 
-const AUTH_PAGES = ["/login", "/register"];
+const AUTH_PAGES = ["/login", "/register", "/forgot-password"];
+// Must stay reachable regardless of session state — an emailed reset link
+// can be opened on a browser that's currently logged in on another account.
+const ALWAYS_PUBLIC_PAGES = ["/reset-password"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const authenticated = Boolean(request.cookies.get(AUTH_COOKIE_NAME)?.value);
+
+  if (ALWAYS_PUBLIC_PAGES.includes(pathname)) {
+    return NextResponse.next();
+  }
 
   if (AUTH_PAGES.includes(pathname)) {
     if (authenticated) {
@@ -36,5 +43,7 @@ export const config = {
     "/admin/:path*",
     "/login",
     "/register",
+    "/forgot-password",
+    "/reset-password",
   ],
 };

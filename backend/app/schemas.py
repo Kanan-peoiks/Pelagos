@@ -34,6 +34,15 @@ class LoginRequest(CamelModel):
 Role = Literal["viewer", "operator", "admin"]
 
 
+class ForgotPasswordRequest(CamelModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(CamelModel):
+    token: str
+    new_password: str
+
+
 class UserOut(CamelModel):
     id: str
     name: str
@@ -154,8 +163,19 @@ class FeedbackOut(FeedbackCreate):
     user_name: str
     user_email: str
     created_at: datetime
+    resolved: bool = False
+    admin_reply: Optional[str] = None
+    replied_at: Optional[datetime] = None
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+
+class FeedbackResolveRequest(CamelModel):
+    resolved: bool
+
+
+class FeedbackReplyRequest(CamelModel):
+    message: str
 
 
 # ---- Admin --------------------------------------------------------------------

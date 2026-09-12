@@ -132,7 +132,7 @@ function ResponseContent() {
           className="response-columns"
         >
           {FLOW.map((col) => (
-            <div key={col.key} className="panel" style={{ minHeight: 280 }}>
+            <div key={col.key} className="panel panel-static" style={{ minHeight: 280 }}>
               <div className="panel-header">
                 <span className="panel-title">{col.label}</span>
                 <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>

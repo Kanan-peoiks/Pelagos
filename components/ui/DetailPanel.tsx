@@ -72,16 +72,27 @@ export default function DetailPanel({
           height: 32,
           borderRadius: 8,
           border: "1px solid var(--glass-border)",
-          background: "transparent",
-          color: "var(--text-secondary)",
+          background: "var(--surface-muted)",
+          color: "var(--text-primary)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
           flexShrink: 0,
+          transition: "background 0.15s ease, border-color 0.15s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "var(--color-high)";
+          e.currentTarget.style.color = "#fff";
+          e.currentTarget.style.borderColor = "transparent";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "var(--surface-muted)";
+          e.currentTarget.style.color = "var(--text-primary)";
+          e.currentTarget.style.borderColor = "var(--glass-border)";
         }}
       >
-        <X size={16} />
+        <X size={18} strokeWidth={2.25} />
       </button>
     </div>
   );

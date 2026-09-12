@@ -89,7 +89,7 @@ function AiAnalysisContent() {
           />
         </section>
 
-        <div className="panel">
+        <div className="panel panel-static">
           <div className="panel-header">
             <span className="panel-title">AI analysis queue</span>
             <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Synced with backend</span>

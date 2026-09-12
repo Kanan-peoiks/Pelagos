@@ -35,7 +35,7 @@ export default function AccountPage() {
         />
 
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }} className="account-grid">
-          <div className="panel">
+          <div className="panel panel-static">
             <div className="panel-header">
               <span className="panel-title">Profile</span>
             </div>
@@ -72,7 +72,7 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <div className="panel">
+          <div className="panel panel-static">
             <div className="panel-header">
               <span className="panel-title">Session</span>
             </div>
@@ -162,7 +162,7 @@ function FeedbackPanel() {
   };
 
   return (
-    <div className="panel" style={{ marginTop: 16 }}>
+    <div className="panel panel-static" style={{ marginTop: 16 }}>
       <div className="panel-header">
         <span className="panel-title">Feedback, suggestion, or question</span>
       </div>

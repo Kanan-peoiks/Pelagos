@@ -248,7 +248,7 @@ function IncidentsContent() {
           }
         />
 
-        <div className="panel" style={{ minHeight: 360 }}>
+        <div className="panel panel-static" style={{ minHeight: 360 }}>
           <div className="panel-header">
             <span className="panel-title">Incident register</span>
             <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Synced with backend</span>

@@ -22,3 +22,13 @@ services:
         sync: false
       - key: ADMIN_EMAILS
         value: seasentry.tech@gmail.com
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: seasentry.tech@gmail.com
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: FRONTEND_URL
+        value: https://seasentry.vercel.app
