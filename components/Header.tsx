@@ -56,7 +56,7 @@ export default function Header({
   onLogout,
   onMenuClick,
   userName = "Operator",
-  userRole = "Admin",
+  userRole = "Viewer",
 }: Props) {
   const { hasLiveIncident, simulateLiveIncident, resolveLiveIncident } = useIncidentStore();
 

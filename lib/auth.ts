@@ -171,6 +171,30 @@ export async function loginAsDemo(): Promise<AuthResult> {
   }
 }
 
+/** Re-fetches the current user from the backend (the real source of truth
+ * for role) and overwrites the localStorage cache. Called on every
+ * AppShell mount so a stale cached role (e.g. left over from testing a
+ * different account in the same browser) can never linger — the backend
+ * enforces permissions regardless, but the UI should never show one thing
+ * while the backend does another. Returns null (and clears the session) if
+ * the cookie is missing/invalid. */
+export async function refreshCurrentUser(): Promise<AuthUser | null> {
+  try {
+    const res = await fetch("/api/auth/me", { cache: "no-store" });
+    if (!res.ok) {
+      logout();
+      return null;
+    }
+    const { user } = (await res.json()) as { user: AuthUser };
+    localStorage.setItem(AUTH_STORAGE_KEY, "true");
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    return user;
+  } catch {
+    // Network hiccup — keep whatever was cached rather than logging out.
+    return readStoredUser();
+  }
+}
+
 export function logout(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(AUTH_STORAGE_KEY);

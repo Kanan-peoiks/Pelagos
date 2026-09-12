@@ -350,7 +350,17 @@ html, body {
    render at natural height and let .dashboard-scroll scroll the whole
    page, instead of trapping the scroll inside one bordered card. Only the
    dashboard's side-by-side twin widgets (Recent Incidents / Activity
-   Feed, which set height:100% to stay aligned) keep the default. */
+   Feed, which set height:100% to stay aligned) keep the default.
+
+   Both the panel itself AND its body need the override: .panel-body alone
+   isn't enough, because .panel (the flex item inside .dashboard-scroll)
+   still defaults to flex-shrink:1 with its own min-height:0 — the outer
+   box was the thing actually getting compressed, which is what silently
+   re-created an internal scroll region even with .panel-body "fixed". */
+.panel-static {
+  flex: 0 0 auto;
+  min-height: auto;
+}
 .panel-static > .panel-body {
   flex: 0 0 auto;
   min-height: auto;
