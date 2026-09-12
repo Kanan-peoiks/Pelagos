@@ -1,11 +1,12 @@
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.deps import get_current_user, get_db, require_admin
-from app.email_util import send_feedback_thanks_email
+from app.email_util import send_feedback_reply_email, send_feedback_thanks_email
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
@@ -65,4 +66,29 @@ def resolve_feedback(
     feedback.resolved = payload.resolved
     db.commit()
     db.refresh(feedback)
+    return feedback
+
+
+@router.post("/{feedback_id}/reply", response_model=schemas.FeedbackOut)
+def reply_to_feedback(
+    feedback_id: str,
+    payload: schemas.FeedbackReplyRequest,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(require_admin),
+):
+    feedback = db.get(models.Feedback, feedback_id)
+    if feedback is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
+
+    feedback.admin_reply = payload.message
+    feedback.replied_at = datetime.now(timezone.utc)
+    feedback.resolved = True
+    db.commit()
+    db.refresh(feedback)
+
+    try:
+        send_feedback_reply_email(feedback.user_email, feedback.user_name, feedback.message, payload.message)
+    except Exception:
+        logging.getLogger("seasentry.email").exception("Failed to send feedback reply email to %s", feedback.user_email)
+
     return feedback

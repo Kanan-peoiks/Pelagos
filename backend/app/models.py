@@ -119,3 +119,5 @@ class Feedback(Base):
     message = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     resolved = Column(Boolean, nullable=False, default=False)
+    admin_reply = Column(String, nullable=True)
+    replied_at = Column(DateTime(timezone=True), nullable=True)
