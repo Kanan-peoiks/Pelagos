@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.deps import get_current_user, get_db
+from app.deps import get_db, require_operator
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
@@ -44,7 +44,7 @@ def get_incident(incident_id: str, db: Session = Depends(get_db)):
 def create_incident(
     payload: schemas.IncidentCreate,
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_user),
+    _current_user: models.User = Depends(require_operator),
 ):
     incident = models.Incident(
         display_id=_next_display_id(db),
@@ -111,7 +111,7 @@ def apply_decision(
     incident_id: str,
     payload: schemas.DecisionRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_operator),
 ):
     incident = _find_incident(db, incident_id)
 

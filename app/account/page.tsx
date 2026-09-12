@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PageHeader from "@/components/ui/PageHeader";
 import { getCurrentUser, logout, type AuthUser } from "@/lib/auth";
-import { Shield, LogOut, User } from "lucide-react";
+import { Shield, LogOut, User, Send, CheckCircle2, Loader2 } from "lucide-react";
+
+const ROLE_LABEL: Record<AuthUser["role"], string> = {
+  viewer: "Viewer (read-only)",
+  operator: "Operator",
+  admin: "Admin",
+};
 
 export default function AccountPage() {
   const router = useRouter();
@@ -58,8 +64,8 @@ export default function AccountPage() {
               </div>
 
               <div style={{ display: "grid", gap: 12, fontSize: 13 }}>
-                <InfoRow label="Role" value="Admin / Duty Operator" />
-                <InfoRow label="Organisation" value="SeaSentry Operations (demo)" />
+                <InfoRow label="Role" value={user ? ROLE_LABEL[user.role] : "—"} />
+                <InfoRow label="Organisation" value="SeaSentry Operations" />
                 <InfoRow label="Monitoring theatre" value="Caspian Sea · Azerbaijan" />
                 <InfoRow label="Auth mode" value="SeaSentry account session" />
               </div>
@@ -113,6 +119,8 @@ export default function AccountPage() {
             </div>
           </div>
         </div>
+
+        {user && !user.isDemo && <FeedbackPanel />}
       </div>
 
       <style>{`
@@ -121,6 +129,110 @@ export default function AccountPage() {
         }
       `}</style>
     </AppShell>
+  );
+}
+
+function FeedbackPanel() {
+  const [kind, setKind] = useState<"feedback" | "suggestion" | "question">("suggestion");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    setError(null);
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, message: message.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to send.");
+      }
+      setMessage("");
+      setStatus("sent");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send.");
+      setStatus("idle");
+    }
+  };
+
+  return (
+    <div className="panel" style={{ marginTop: 16 }}>
+      <div className="panel-header">
+        <span className="panel-title">Feedback, suggestion, or question</span>
+      </div>
+      <div className="panel-body" style={{ padding: 20 }}>
+        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value as typeof kind)}
+            style={{
+              padding: "9px 11px",
+              borderRadius: 8,
+              border: "1px solid var(--glass-border)",
+              background: "var(--bg-base)",
+              color: "var(--text-primary)",
+              fontSize: 13,
+              fontFamily: "inherit",
+              width: 180,
+            }}
+          >
+            <option value="feedback">Feedback</option>
+            <option value="suggestion">Suggestion</option>
+            <option value="question">Question</option>
+          </select>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Tell us what's on your mind…"
+            style={{
+              padding: "9px 11px",
+              borderRadius: 8,
+              border: "1px solid var(--glass-border)",
+              background: "var(--bg-base)",
+              color: "var(--text-primary)",
+              fontSize: 13,
+              fontFamily: "inherit",
+              minHeight: 90,
+              resize: "vertical",
+            }}
+          />
+          {error && <div className="auth-error" role="alert">{error}</div>}
+          {status === "sent" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--accent)" }}>
+              <CheckCircle2 size={14} /> Sent — thank you.
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={status === "sending" || !message.trim()}
+            style={{
+              justifySelf: "start",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--accent)",
+              color: "var(--bg-elevated)",
+              border: "none",
+              borderRadius: 8,
+              padding: "10px 16px",
+              fontWeight: 650,
+              fontSize: 13,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {status === "sending" ? <Loader2 size={14} className="spinner" /> : <Send size={14} />}
+            Send
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

@@ -31,10 +31,17 @@ class LoginRequest(CamelModel):
     password: str
 
 
+Role = Literal["viewer", "operator", "admin"]
+
+
 class UserOut(CamelModel):
     id: str
     name: str
     email: str
+    role: Role = "viewer"
+    is_demo: bool = False
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
 
 
 class TokenResponse(CamelModel):
@@ -130,3 +137,53 @@ class ReportOut(ReportCreate):
     generated_at: datetime
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+
+# ---- Feedback ---------------------------------------------------------------
+
+FeedbackKind = Literal["feedback", "suggestion", "question"]
+
+
+class FeedbackCreate(CamelModel):
+    kind: FeedbackKind
+    message: str
+
+
+class FeedbackOut(FeedbackCreate):
+    id: str
+    user_name: str
+    user_email: str
+    created_at: datetime
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+
+# ---- Admin --------------------------------------------------------------------
+
+
+class AdminUserOut(CamelModel):
+    id: str
+    name: str
+    email: str
+    role: Role
+    is_demo: bool
+    created_at: datetime
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+
+class RoleUpdateRequest(CamelModel):
+    role: Role
+
+
+class LoginsByDay(CamelModel):
+    date: str
+    count: int
+
+
+class AdminStatsOut(CamelModel):
+    total_users: int
+    total_operators: int
+    total_admins: int
+    logins_today: int
+    logins_last_7_days: list[LoginsByDay]

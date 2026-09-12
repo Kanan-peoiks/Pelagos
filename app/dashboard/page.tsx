@@ -14,6 +14,7 @@ import { useIncidentStore, LIVE_INCIDENT_ID } from "@/lib/incident-store";
 import { useSpillSourceEstimate } from "@/lib/useSpillSourceEstimate";
 import { mockData } from "@/lib/mock-data";
 import type { Incident } from "@/lib/types";
+import { getCurrentUser, canOperate } from "@/lib/auth";
 import { MapPin, X } from "lucide-react";
 
 export default function DashboardPage() {
@@ -34,6 +35,7 @@ function DashboardContent() {
   const [weatherPortId, setWeatherPortId] = useState(mockData.ports[0].id);
   const weatherPort =
     mockData.ports.find((p) => p.id === weatherPortId) || mockData.ports[0];
+  const canAct = canOperate(getCurrentUser());
 
   const handleIncidentSelect = (inc: Incident) => {
     if (inc.id === LIVE_INCIDENT_ID) {
@@ -72,6 +74,7 @@ function DashboardContent() {
       <div className={`dashboard-scroll${selected ? " dashboard-scroll--panel-open" : ""}`}>
         <div className="dashboard-map-row">
           <section className="dashboard-map-wrap" aria-label="Caspian Sea incident map">
+            {canAct && (
             <button
               type="button"
               onClick={() => setPlacementMode((v) => !v)}
@@ -98,6 +101,7 @@ function DashboardContent() {
               {placementMode ? <X size={14} /> : <MapPin size={14} />}
               {placementMode ? "Cancel" : "Report Spill"}
             </button>
+            )}
             <MapPanel
               incidents={incidents}
               vessels={mapVessels}

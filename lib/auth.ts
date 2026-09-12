@@ -13,10 +13,24 @@ export const AUTH_STORAGE_KEY = "seasentry-auth";
 export const USER_STORAGE_KEY = "seasentry-user";
 export const AUTH_COOKIE_NAME = "seasentry_token";
 
+export type UserRole = "viewer" | "operator" | "admin";
+
 export type AuthUser = {
   name: string;
   email: string;
+  role: UserRole;
+  isDemo: boolean;
 };
+
+/** Anyone at "viewer" (including the demo account) can browse but not
+ * create/decide incidents, generate reports, etc. */
+export function canOperate(user: AuthUser | null): boolean {
+  return user?.role === "operator" || user?.role === "admin";
+}
+
+export function isAdmin(user: AuthUser | null): boolean {
+  return user?.role === "admin";
+}
 
 export type AuthResult =
   | { ok: true; user: AuthUser }

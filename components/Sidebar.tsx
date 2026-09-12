@@ -9,8 +9,10 @@ import {
   Siren,
   FileBarChart,
   UserCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { ENABLED_NAV, NAV_ROUTES, type NavId } from "@/lib/nav";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 type NavItem = {
   id: NavId;
@@ -26,6 +28,7 @@ const NAV: NavItem[] = [
   { id: "response", label: "Response", icon: <Siren size={18} strokeWidth={1.75} /> },
   { id: "reports", label: "Reports", icon: <FileBarChart size={18} strokeWidth={1.75} /> },
   { id: "account", label: "Account", icon: <UserCircle size={18} strokeWidth={1.75} /> },
+  { id: "admin", label: "Admin", icon: <ShieldCheck size={18} strokeWidth={1.75} /> },
 ];
 
 const COLLAPSED_WIDTH = 64;
@@ -71,7 +74,7 @@ export default function Sidebar({ active = "dashboard", expanded }: Props) {
         Navigation
       </div>
 
-      {NAV.map((item) => {
+      {NAV.filter((item) => item.id !== "admin" || isAdmin(getCurrentUser())).map((item) => {
         const href = NAV_ROUTES[item.id];
         const enabled = ENABLED_NAV.includes(item.id);
         const isActive =

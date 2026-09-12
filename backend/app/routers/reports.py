@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.deps import get_current_user, get_db
+from app.deps import get_db, require_operator
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -16,7 +16,7 @@ def list_reports(db: Session = Depends(get_db)):
 def create_report(
     payload: schemas.ReportCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_operator),
 ):
     report = models.Report(
         incident_id=payload.incident_id,
