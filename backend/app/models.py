@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, Float, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, String
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -18,6 +18,13 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # "viewer" (default — can browse and submit feedback only) | "operator"
+    # (can create/decide incidents, generate reports) | "admin" (can also
+    # change other users' roles). See deps.py's require_operator/require_admin.
+    role = Column(String, nullable=False, default="viewer")
+    # The one fixed public demo account (see routers/auth.py) — always kept
+    # at role="viewer" regardless of ADMIN_EMAILS, and blocked from feedback.
+    is_demo = Column(Boolean, nullable=False, default=False)
 
 
 class Incident(Base):
@@ -75,3 +82,28 @@ class Report(Base):
     vessel_count = Column(Float, nullable=False)
     duration_hours = Column(Float, nullable=False)
     estimated_cost_usd = Column(Float, nullable=False)
+
+
+class LoginEvent(Base):
+    """One row per successful register/login/demo-login — powers the admin
+    panel's "how many people used the app today" stats. Intentionally
+    minimal (no IP/user-agent) since it's just for aggregate counts."""
+
+    __tablename__ = "login_events"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, nullable=False)
+    is_demo = Column(Boolean, nullable=False, default=False)
+    at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, nullable=False)
+    user_name = Column(String, nullable=False)
+    user_email = Column(String, nullable=False)
+    kind = Column(String, nullable=False)  # "feedback" | "suggestion" | "question"
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

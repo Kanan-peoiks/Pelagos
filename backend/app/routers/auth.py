@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.config import settings
 from app.deps import get_current_user, get_db
 from app.rate_limit import enforce_login_rate_limit, record_login_failure, reset_login_attempts
 from app.security import create_access_token, hash_password, verify_password
@@ -14,6 +15,24 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # click, no registration needed. Lazily created on first use below.
 DEMO_EMAIL = "demo@seasentry.az"
 DEMO_NAME = "Demo Operator"
+
+
+def _maybe_promote_admin(user: models.User, db: Session) -> None:
+    """Auto-promotes a real (non-demo) user to admin if their email is in the
+    ADMIN_EMAILS env var. Runs on every register/login so adding an email to
+    that list takes effect the next time that person signs in — no manual DB
+    edit needed."""
+    if user.is_demo or user.role == "admin":
+        return
+    if user.email.strip().lower() in settings.admin_email_list:
+        user.role = "admin"
+        db.commit()
+        db.refresh(user)
+
+
+def _log_login(db: Session, user: models.User, is_demo: bool = False) -> None:
+    db.add(models.LoginEvent(user_id=user.id, is_demo=is_demo))
+    db.commit()
 
 
 @router.post("/register", response_model=schemas.TokenResponse)
@@ -31,6 +50,9 @@ def register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    _maybe_promote_admin(user, db)
+    _log_login(db, user)
+
     token = create_access_token(subject=user.id)
     return schemas.TokenResponse(access_token=token, user=schemas.UserOut.model_validate(user, from_attributes=True))
 
@@ -47,6 +69,9 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
         raise invalid
 
     reset_login_attempts(rate_limit_key)
+    _maybe_promote_admin(user, db)
+    _log_login(db, user)
+
     token = create_access_token(subject=user.id)
     return schemas.TokenResponse(access_token=token, user=schemas.UserOut.model_validate(user, from_attributes=True))
 
@@ -60,7 +85,8 @@ def me(current_user: models.User = Depends(get_current_user)):
 def demo_login(db: Session = Depends(get_db)):
     """Signs the caller into a fixed, publicly-known demo account — no
     credentials needed. Used by the "Continue as guest" button so a pitch
-    audience can reach the dashboard in one click."""
+    audience can reach the dashboard in one click. Always stays role="viewer"
+    and is never eligible for admin promotion or feedback submission."""
     user = db.query(models.User).filter(models.User.email == DEMO_EMAIL).first()
     if user is None:
         user = models.User(
@@ -69,10 +95,14 @@ def demo_login(db: Session = Depends(get_db)):
             # Unguessable and unused — this account is only ever reached via
             # this endpoint, never via the normal password-checked /login.
             password_hash=hash_password(secrets.token_urlsafe(32)),
+            role="viewer",
+            is_demo=True,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
+
+    _log_login(db, user, is_demo=True)
 
     token = create_access_token(subject=user.id)
     return schemas.TokenResponse(access_token=token, user=schemas.UserOut.model_validate(user, from_attributes=True))

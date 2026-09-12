@@ -33,6 +33,7 @@ export const config = {
     "/response/:path*",
     "/reports/:path*",
     "/account/:path*",
+    "/admin/:path*",
     "/login",
     "/register",
   ],

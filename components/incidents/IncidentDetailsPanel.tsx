@@ -34,7 +34,7 @@ import RiskBadge from "@/components/ui/RiskBadge";
 import StatusBadge from "@/components/ui/StatusBadge";
 import DetailPanel from "@/components/ui/DetailPanel";
 import { useIncidentStore } from "@/lib/incident-store";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, canOperate } from "@/lib/auth";
 import {
   Satellite,
   Ship,
@@ -354,6 +354,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
   const live = incident ? getIncidentById(incident.id) || incident : null;
   const vessel = getVesselById(live?.relatedVesselId);
   const pending = live?.reviewStatus === "PENDING" || live?.humanDecision === "pending";
+  const canAct = canOperate(getCurrentUser());
 
   const { wind, sea, estimate: sourceEstimate, loading: weatherLoading } = useSpillSourceEstimate(live);
   const [pdfState, setPdfState] = useState<"idle" | "generating" | "ready">("idle");
@@ -798,7 +799,23 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                   {live.humanDecisionNote && <Field label="Notes">{live.humanDecisionNote}</Field>}
                 </div>
 
-                {pending && (
+                {!canAct && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      fontSize: 12,
+                      color: "var(--text-secondary)",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      background: "var(--surface-muted)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    View-only access — an operator or admin account is required to make a decision here.
+                  </div>
+                )}
+
+                {canAct && pending && (
                   <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <button type="button" style={actionBtnStyle("primary")} onClick={() => run("confirm")}>
                       <CheckCircle2 size={13} /> Confirm Incident
@@ -815,7 +832,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                   </div>
                 )}
 
-                {!pending && live.status !== "resolved" && live.status !== "rejected" && live.status !== "cleaning" && (
+                {canAct && !pending && live.status !== "resolved" && live.status !== "rejected" && live.status !== "cleaning" && (
                   <div style={{ marginTop: 12 }}>
                     <button type="button" style={actionBtnStyle("neutral")} onClick={() => run("mark_cleaning")}>
                       <Droplets size={13} /> Mark Cleaning Started
@@ -902,23 +919,25 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => generatePdf(materials)}
-                    disabled={pdfState !== "idle"}
-                    style={{
-                      ...actionBtnStyle(pdfState === "ready" ? "primary" : "neutral"),
-                      marginTop: 16,
-                      cursor: pdfState === "idle" ? "pointer" : "default",
-                    }}
-                  >
-                    {pdfState === "generating" && <Loader2 size={13} className="spinner" />}
-                    {pdfState === "ready" && <CheckCircle2 size={13} />}
-                    {pdfState === "idle" && <FileDown size={13} />}
-                    {pdfState === "idle" && "Generate PDF Report"}
-                    {pdfState === "generating" && "Generating…"}
-                    {pdfState === "ready" && "Downloaded — Generate Again"}
-                  </button>
+                  {canAct && (
+                    <button
+                      type="button"
+                      onClick={() => generatePdf(materials)}
+                      disabled={pdfState !== "idle"}
+                      style={{
+                        ...actionBtnStyle(pdfState === "ready" ? "primary" : "neutral"),
+                        marginTop: 16,
+                        cursor: pdfState === "idle" ? "pointer" : "default",
+                      }}
+                    >
+                      {pdfState === "generating" && <Loader2 size={13} className="spinner" />}
+                      {pdfState === "ready" && <CheckCircle2 size={13} />}
+                      {pdfState === "idle" && <FileDown size={13} />}
+                      {pdfState === "idle" && "Generate PDF Report"}
+                      {pdfState === "generating" && "Generating…"}
+                      {pdfState === "ready" && "Downloaded — Generate Again"}
+                    </button>
+                  )}
                   {pdfState === "ready" && (
                     <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 6, textAlign: "center" }}>
                       A real PDF was saved to your downloads.
