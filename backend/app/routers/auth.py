@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -135,7 +136,13 @@ def forgot_password(payload: schemas.ForgotPasswordRequest, db: Session = Depend
     db.commit()
 
     reset_url = f"{settings.frontend_url.rstrip('/')}/reset-password?token={reset_token.token}"
-    send_password_reset_email(user.email, reset_url)
+    try:
+        send_password_reset_email(user.email, reset_url)
+    except Exception:
+        # Never let an SMTP failure surface here — a 500 only for accounts
+        # that exist would leak which emails are registered, defeating the
+        # whole point of the generic response below.
+        logging.getLogger("seasentry.email").exception("Failed to send password reset email to %s", user.email)
 
     return generic_response
 
