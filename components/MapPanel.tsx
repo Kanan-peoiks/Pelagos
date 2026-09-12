@@ -33,10 +33,13 @@ type Props = {
   onMapClick?: (lat: number, lng: number) => void;
 };
 
+// Fixed light-theme hex values (not the --color-high/med/low variables) —
+// used only inside makeIncidentPopup(), which always renders on the
+// fixed-light Leaflet popup card regardless of app theme.
 function riskColor(risk: Incident["risk"]) {
-  if (risk === "HIGH") return "var(--color-high)";
-  if (risk === "MEDIUM") return "var(--color-med)";
-  return "var(--color-low)";
+  if (risk === "HIGH") return "#E07A5F";
+  if (risk === "MEDIUM") return "#E9C46A";
+  return "#A8DADC";
 }
 
 function createSpillIcon(L: typeof import("leaflet"), active: boolean, isLive: boolean) {
@@ -112,36 +115,41 @@ function createSourceIcon(L: typeof import("leaflet")) {
   return L.divIcon({ html, className: "", iconSize: [22, 22], iconAnchor: [11, 11] });
 }
 
+// The Leaflet popup card is deliberately fixed-light (see globals.css'
+// .leaflet-popup-content-wrapper comment) since it floats over the always-
+// light OpenStreetMap tiles — so this template uses fixed dark-on-light
+// colors, never the --text-* theme variables, which would turn near-white
+// in dark mode and vanish on this card.
 function makeIncidentPopup(inc: Incident) {
   const pct = Math.round(inc.aiProbability * 100);
   const risk = riskColor(inc.risk);
   return `
     <div style="padding:16px;font-family:'IBM Plex Sans',sans-serif;min-width:240px;">
       <div style="margin-bottom:4px;">
-        <div style="font-size:13px;font-weight:700;color:var(--text-primary);letter-spacing:0.04em;">
+        <div style="font-size:13px;font-weight:700;color:#2B2D42;letter-spacing:0.04em;">
           INCIDENT ${inc.displayId}
         </div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">${inc.location}</div>
+        <div style="font-size:12px;color:#6C757D;margin-top:3px;">${inc.location}</div>
       </div>
 
-      <div style="height:1px;background:var(--border-muted);margin:12px 0;"></div>
+      <div style="height:1px;background:#E6E2DA;margin:12px 0;"></div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-tertiary);margin-bottom:4px;">Area</div>
-          <div style="font-size:15px;font-weight:600;color:var(--text-primary);font-variant-numeric:tabular-nums;">${formatAreaM2(inc.areaM2)}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Area</div>
+          <div style="font-size:15px;font-weight:600;color:#2B2D42;font-variant-numeric:tabular-nums;">${formatAreaM2(inc.areaM2)}</div>
         </div>
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-tertiary);margin-bottom:4px;">Model Confidence</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Model Confidence</div>
           <div style="font-size:15px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;">${pct}%</div>
         </div>
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-tertiary);margin-bottom:4px;">Risk</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Risk</div>
           <div style="font-size:13px;font-weight:700;color:${risk};letter-spacing:0.05em;">${inc.risk}</div>
         </div>
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-tertiary);margin-bottom:4px;">Status</div>
-          <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${INCIDENT_STATUS_LABEL[inc.status].toUpperCase()}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Status</div>
+          <div style="font-size:13px;font-weight:600;color:#2B2D42;">${INCIDENT_STATUS_LABEL[inc.status].toUpperCase()}</div>
         </div>
       </div>
 

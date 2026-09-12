@@ -43,6 +43,84 @@
   --accent-teal-glow: rgba(129, 178, 154, 0.35);
 }
 
+/* ── Dark theme ──
+   Two ways in: the OS-level preference (prefers-color-scheme), and an
+   explicit user toggle persisted via data-theme on <html> (lib/theme.ts).
+   The explicit toggle always wins over the OS preference in either
+   direction — set once, it locks the theme regardless of what the
+   system says next. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-base: #1B1D27;
+    --bg-elevated: #242631;
+    --card-surface: #242631;
+    --border-muted: #383B4A;
+    --text-primary: #EDEEF3;
+    --text-secondary: #A6ABBD;
+    --text-tertiary: #8B8FA3;
+
+    --glass-bg: rgba(36, 38, 49, 0.85);
+    --glass-bg-hover: rgba(56, 59, 74, 0.6);
+    --glass-border: #383B4A;
+    --glass-border-light: rgba(166, 171, 189, 0.22);
+
+    --surface-muted: rgba(56, 59, 74, 0.4);
+    --surface-muted-hover: rgba(56, 59, 74, 0.65);
+
+    --accent: #8FC7AC;
+    --accent-soft: rgba(143, 199, 172, 0.16);
+    --accent-teal: #8FC7AC;
+
+    --color-high: #E68B6E;
+    --color-med: #EDCE7C;
+    --color-low: #B7E2E4;
+    --color-info: #8FC7AC;
+
+    --color-high-text: #F2916F;
+    --color-med-text: #E0B84A;
+    --color-low-text: #7FC9CC;
+
+    --bg-base-start: #242631;
+    --bg-base-end: #1B1D27;
+    --accent-teal-glow: rgba(143, 199, 172, 0.35);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-base: #1B1D27;
+  --bg-elevated: #242631;
+  --card-surface: #242631;
+  --border-muted: #383B4A;
+  --text-primary: #EDEEF3;
+  --text-secondary: #A6ABBD;
+  --text-tertiary: #8B8FA3;
+
+  --glass-bg: rgba(36, 38, 49, 0.85);
+  --glass-bg-hover: rgba(56, 59, 74, 0.6);
+  --glass-border: #383B4A;
+  --glass-border-light: rgba(166, 171, 189, 0.22);
+
+  --surface-muted: rgba(56, 59, 74, 0.4);
+  --surface-muted-hover: rgba(56, 59, 74, 0.65);
+
+  --accent: #8FC7AC;
+  --accent-soft: rgba(143, 199, 172, 0.16);
+  --accent-teal: #8FC7AC;
+
+  --color-high: #E68B6E;
+  --color-med: #EDCE7C;
+  --color-low: #B7E2E4;
+  --color-info: #8FC7AC;
+
+  --color-high-text: #F2916F;
+  --color-med-text: #E0B84A;
+  --color-low-text: #7FC9CC;
+
+  --bg-base-start: #242631;
+  --bg-base-end: #1B1D27;
+  --accent-teal-glow: rgba(143, 199, 172, 0.35);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -75,24 +153,29 @@ html, body {
   background: var(--bg-base) !important;
   font-family: inherit;
 }
+/* The basemap tiles (OpenStreetMap) are always light regardless of app
+   theme, so the popup card floating over them stays light too — its text
+   is deliberately a fixed dark color here, NOT var(--text-primary), which
+   would flip to near-white in dark mode and become illegible on this
+   always-light card. */
 .leaflet-popup-content-wrapper {
   background: rgba(255, 255, 255, 0.97) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid var(--border-muted) !important;
+  border: 1px solid #E6E2DA !important;
   border-radius: 8px !important;
   box-shadow: 0 12px 32px rgba(43, 45, 66, 0.16) !important;
-  color: var(--text-primary) !important;
+  color: #2B2D42 !important;
 }
 .leaflet-popup-tip { background: rgba(255, 255, 255, 0.97) !important; }
 .leaflet-popup-content { margin: 0 !important; }
 .leaflet-popup-close-button {
-  color: var(--text-secondary) !important;
+  color: #6C757D !important;
   top: 10px !important;
   right: 12px !important;
   font-size: 18px !important;
 }
-.leaflet-popup-close-button:hover { color: var(--text-primary) !important; }
+.leaflet-popup-close-button:hover { color: #2B2D42 !important; }
 .leaflet-bar {
   border: 1px solid var(--glass-border) !important;
   border-radius: 6px !important;
@@ -308,7 +391,7 @@ html, body {
 .dashboard-lower {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
-  gap: 16px;
+  gap: 20px;
   min-height: 280px;
 }
 
@@ -320,6 +403,11 @@ html, body {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  /* A subtle lift so adjacent panels (e.g. dashboard's side-by-side Recent
+     Incidents / Activity Feed) read as distinct cards instead of blending
+     into the page background and each other — the border alone was too
+     faint against the near-white page background to do that on its own. */
+  box-shadow: 0 1px 3px rgba(43, 45, 66, 0.06), 0 1px 2px rgba(43, 45, 66, 0.04);
 }
 
 .panel-header {
@@ -451,7 +539,7 @@ html, body {
   top: 0;
   z-index: 40;
   backdrop-filter: blur(14px);
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--glass-bg);
   border-bottom: 1px solid var(--glass-border);
 }
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2, ArrowLeft } from "lucide-react";
 import { login, register } from "@/lib/auth";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 type Mode = "login" | "register";
 
@@ -52,9 +53,12 @@ export default function AuthForm({ mode }: Props) {
       <div className="auth-page-bg" aria-hidden />
 
       <div className="auth-page-shell">
-        <Link href="/" className="auth-back">
-          <ArrowLeft size={14} /> Back to home
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Link href="/" className="auth-back">
+            <ArrowLeft size={14} /> Back to home
+          </Link>
+          <ThemeToggle />
+        </div>
 
         <div className="auth-card">
           <div className="auth-card-brand">

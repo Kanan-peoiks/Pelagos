@@ -282,7 +282,11 @@ function IncidentsContent() {
 
             {filtered.length === 0 && (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-secondary)", fontSize: 13 }}>
-                No incidents match your filters.
+                {incidents.length === 0
+                  ? "No incident data yet."
+                  : search.trim()
+                    ? `No results for "${search.trim()}" — check the spelling or try a different search term.`
+                    : "No incidents match the selected filters."}
               </div>
             )}
 
