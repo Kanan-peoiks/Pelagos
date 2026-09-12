@@ -154,7 +154,7 @@ function DashboardContent() {
         </div>
 
         <section aria-label="Key performance indicators">
-          <KpiCards kpis={kpis} />
+          <KpiCards kpis={kpis} incidents={incidents} />
         </section>
 
         <section className="dashboard-lower" aria-label="Incidents and activity">

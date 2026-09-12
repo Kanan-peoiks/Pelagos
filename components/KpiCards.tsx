@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardKpis, formatAreaM2 } from "@/lib/mock-data";
+import { Incident } from "@/lib/types";
 import {
   AlertTriangle,
   ShieldAlert,
@@ -11,6 +12,7 @@ import {
 
 type Props = {
   kpis: DashboardKpis;
+  incidents: Incident[];
 };
 
 type CardProps = {
@@ -19,9 +21,69 @@ type CardProps = {
   hint?: string;
   icon: React.ReactNode;
   accent?: string;
+  trend?: number[];
 };
 
-function KpiCard({ label, value, hint, icon, accent = "var(--accent)" }: CardProps) {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Buckets `values` (one timestamp + number per incident) into the last 7
+ * calendar days (oldest first, today last) by summing same-day entries. */
+function bucketByDay(entries: { at: string; value: number }[]): number[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = new Array(7).fill(0);
+  for (const { at, value } of entries) {
+    const day = new Date(at);
+    day.setHours(0, 0, 0, 0);
+    const offset = Math.round((today.getTime() - day.getTime()) / DAY_MS);
+    const idx = 6 - offset;
+    if (idx >= 0 && idx <= 6) buckets[idx] += value;
+  }
+  return buckets;
+}
+
+function Sparkline({ points, accent }: { points: number[]; accent: string }) {
+  const width = 100;
+  const height = 28;
+  const max = Math.max(...points, 0.0001);
+  const min = Math.min(...points, 0);
+  const range = max - min || 1;
+  const step = width / (points.length - 1);
+
+  const coords = points.map((v, i) => {
+    const x = i * step;
+    const y = height - 2 - ((v - min) / range) * (height - 4);
+    return [x, y] as const;
+  });
+
+  const linePath = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+  const gradientId = `spark-${accent.replace(/[^a-zA-Z0-9]/g, "")}`;
+  const [lastX, lastY] = coords[coords.length - 1];
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width="100%"
+      height={height}
+      preserveAspectRatio="none"
+      aria-hidden
+      style={{ display: "block", marginTop: 2 }}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" style={{ stopColor: accent, stopOpacity: 0.28 }} />
+          <stop offset="100%" style={{ stopColor: accent, stopOpacity: 0 }} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} style={{ fill: `url(#${gradientId})`, stroke: "none" }} />
+      <path d={linePath} style={{ fill: "none", stroke: accent, strokeWidth: 1.4, strokeLinejoin: "round", strokeLinecap: "round" }} />
+      <circle cx={lastX} cy={lastY} r={2} style={{ fill: accent }} />
+    </svg>
+  );
+}
+
+function KpiCard({ label, value, hint, icon, accent = "var(--accent)", trend }: CardProps) {
   return (
     <div
       style={{
@@ -78,11 +140,32 @@ function KpiCard({ label, value, hint, icon, accent = "var(--accent)" }: CardPro
       {hint && (
         <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{hint}</div>
       )}
+      {trend && <Sparkline points={trend} accent={accent} />}
     </div>
   );
 }
 
-export default function KpiCards({ kpis }: Props) {
+export default function KpiCards({ kpis, incidents }: Props) {
+  const activeTrend = bucketByDay(
+    incidents
+      .filter((i) => i.status !== "resolved" && i.status !== "rejected")
+      .map((i) => ({ at: i.timestamp, value: 1 }))
+  );
+  const highRiskTrend = bucketByDay(
+    incidents.filter((i) => i.risk === "HIGH").map((i) => ({ at: i.timestamp, value: 1 }))
+  );
+  const detectedAreaTrend = bucketByDay(incidents.map((i) => ({ at: i.timestamp, value: i.areaM2 })));
+  const cleanedAreaTrend = bucketByDay(
+    incidents
+      .filter((i) => i.status === "resolved")
+      .map((i) => ({ at: i.humanDecisionAt ?? i.timestamp, value: i.areaM2 }))
+  );
+  const aiConfidenceTrend = (() => {
+    const sums = bucketByDay(incidents.map((i) => ({ at: i.timestamp, value: i.aiProbability })));
+    const counts = bucketByDay(incidents.map((i) => ({ at: i.timestamp, value: 1 })));
+    return sums.map((sum, i) => (counts[i] > 0 ? sum / counts[i] : 0));
+  })();
+
   return (
     <div
       style={{
@@ -98,6 +181,7 @@ export default function KpiCards({ kpis }: Props) {
         hint="Open cases across Caspian ops"
         icon={<AlertTriangle size={15} strokeWidth={2} />}
         accent="var(--color-high)"
+        trend={activeTrend}
       />
       <KpiCard
         label="High Risk"
@@ -105,6 +189,7 @@ export default function KpiCards({ kpis }: Props) {
         hint="Requires priority review"
         icon={<ShieldAlert size={15} strokeWidth={2} />}
         accent="var(--color-med)"
+        trend={highRiskTrend}
       />
       <KpiCard
         label="Detected Area"
@@ -112,6 +197,7 @@ export default function KpiCards({ kpis }: Props) {
         hint="Active spill footprint"
         icon={<Maximize2 size={15} strokeWidth={2} />}
         accent="var(--accent)"
+        trend={detectedAreaTrend}
       />
       <KpiCard
         label="Cleaned Area"
@@ -119,6 +205,7 @@ export default function KpiCards({ kpis }: Props) {
         hint="Cleaning + resolved"
         icon={<Droplets size={15} strokeWidth={2} />}
         accent="var(--color-low)"
+        trend={cleanedAreaTrend}
       />
       <KpiCard
         label="AI Confidence"
@@ -126,6 +213,7 @@ export default function KpiCards({ kpis }: Props) {
         hint="Avg. model probability"
         icon={<Brain size={15} strokeWidth={2} />}
         accent="var(--accent)"
+        trend={aiConfidenceTrend}
       />
 
       <style>{`

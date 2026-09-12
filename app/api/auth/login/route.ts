@@ -36,6 +36,11 @@ export async function POST(request: Request) {
   }
 
   const data = await res.json();
+
+  if (data.requiresTwoFactor) {
+    return NextResponse.json({ requiresTwoFactor: true, challengeId: data.challengeId });
+  }
+
   const maxAge = body.remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
 
   const response = NextResponse.json({ user: data.user });
