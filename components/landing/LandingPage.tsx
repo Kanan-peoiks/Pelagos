@@ -10,6 +10,7 @@ import {
   Droplets,
   ArrowRight,
   Loader2,
+  Play,
 } from "lucide-react";
 import { loginAsDemo } from "@/lib/auth";
 
@@ -111,9 +112,10 @@ export default function LandingPage() {
             type="button"
             onClick={handleDemo}
             disabled={demoLoading}
-            className="landing-btn landing-btn-ghost landing-btn-lg"
+            className="landing-btn landing-btn-demo landing-btn-lg"
           >
-            {demoLoading ? <Loader2 size={16} className="spinner" /> : "Continue as guest"}
+            {demoLoading ? <Loader2 size={16} className="spinner" /> : <Play size={16} fill="currentColor" />}
+            Continue as guest
           </button>
         </div>
         {demoError && (
@@ -170,9 +172,10 @@ export default function LandingPage() {
             type="button"
             onClick={handleDemo}
             disabled={demoLoading}
-            className="landing-btn landing-btn-primary landing-btn-lg"
+            className="landing-btn landing-btn-demo landing-btn-lg"
           >
-            {demoLoading ? <Loader2 size={16} className="spinner" /> : "Continue as guest"}
+            {demoLoading ? <Loader2 size={16} className="spinner" /> : <Play size={16} fill="currentColor" />}
+            Continue as guest
           </button>
         </div>
       </section>

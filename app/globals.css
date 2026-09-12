@@ -503,6 +503,24 @@ html, body {
 }
 .landing-btn-primary:hover { background: #6fa78d; }
 
+/* Deliberately the loudest button on the page — this is the one-click
+   path for a pitch audience (judges, etc.) to reach the dashboard with
+   no signup, so it needs to read as unmissable next to Login/Register. */
+.landing-btn-demo {
+  color: #fff;
+  background: var(--color-high);
+  border-color: transparent;
+  box-shadow: 0 4px 16px rgba(224, 122, 95, 0.4);
+}
+.landing-btn-demo:hover {
+  background: var(--color-high-text);
+  box-shadow: 0 6px 20px rgba(224, 122, 95, 0.5);
+}
+.landing-btn-demo:disabled {
+  opacity: 0.75;
+  box-shadow: none;
+}
+
 .landing-btn-lg {
   padding: 12px 18px;
   font-size: 14px;
