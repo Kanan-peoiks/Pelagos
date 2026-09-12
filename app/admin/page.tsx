@@ -5,7 +5,7 @@ import AppShell from "@/components/AppShell";
 import PageHeader from "@/components/ui/PageHeader";
 import StatCard from "@/components/ui/StatCard";
 import { getCurrentUser, isAdmin, type UserRole } from "@/lib/auth";
-import { Users, ShieldCheck, UserCog, LogIn, MessageSquare, Search, CheckCircle2, Undo2, Reply, Send, Loader2 } from "lucide-react";
+import { Users, ShieldCheck, UserCog, LogIn, MessageSquare, Search, CheckCircle2, Undo2, Reply, Send, Loader2, History } from "lucide-react";
 
 type AdminUser = {
   id: string;
@@ -36,6 +36,17 @@ type FeedbackItem = {
   repliedAt?: string | null;
 };
 
+type AuditLogEntry = {
+  id: string;
+  actorName: string;
+  actorEmail: string;
+  action: string;
+  targetUserId?: string | null;
+  targetEmail?: string | null;
+  detail?: string | null;
+  createdAt: string;
+};
+
 export default function AdminPage() {
   return (
     <AppShell active="admin">
@@ -51,6 +62,7 @@ function AdminContent() {
   const [userSearch, setUserSearch] = useState("");
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [feedbackFilter, setFeedbackFilter] = useState<"open" | "resolved" | "all">("open");
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -64,16 +76,18 @@ function AdminContent() {
 
     (async () => {
       try {
-        const [statsRes, usersRes, feedbackRes] = await Promise.all([
+        const [statsRes, usersRes, feedbackRes, auditRes] = await Promise.all([
           fetch("/api/admin/stats", { cache: "no-store" }),
           fetch("/api/admin/users", { cache: "no-store" }),
           fetch("/api/feedback", { cache: "no-store" }),
+          fetch("/api/admin/audit-log", { cache: "no-store" }),
         ]);
         if (!statsRes.ok || !usersRes.ok) throw new Error("Failed to load admin data.");
         if (cancelled) return;
         setStats(await statsRes.json());
         setUsers(await usersRes.json());
         setFeedback(feedbackRes.ok ? await feedbackRes.json() : []);
+        setAuditLog(auditRes.ok ? await auditRes.json() : []);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load admin data.");
       } finally {
@@ -100,6 +114,9 @@ function AdminContent() {
       }
       const updated = await res.json();
       setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+
+      const auditRes = await fetch("/api/admin/audit-log", { cache: "no-store" });
+      if (auditRes.ok) setAuditLog(await auditRes.json());
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to update role.");
     } finally {
@@ -298,6 +315,55 @@ function AdminContent() {
                           </select>
                         )}
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="panel panel-static" style={{ marginTop: 16 }}>
+            <div className="panel-header">
+              <span className="panel-title">
+                <History size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
+                Audit Log
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                Role changes · {auditLog.length} recorded
+              </span>
+            </div>
+            <div className="panel-body" style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ textAlign: "left", color: "var(--text-tertiary)", fontSize: 11 }}>
+                    <th style={{ padding: "8px 12px" }}>When</th>
+                    <th style={{ padding: "8px 12px" }}>Admin</th>
+                    <th style={{ padding: "8px 12px" }}>Action</th>
+                    <th style={{ padding: "8px 12px" }}>Target user</th>
+                    <th style={{ padding: "8px 12px" }}>Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLog.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: "24px 12px", textAlign: "center", color: "var(--text-secondary)" }}>
+                        No role changes recorded yet.
+                      </td>
+                    </tr>
+                  )}
+                  {auditLog.map((entry) => (
+                    <tr key={entry.id} style={{ borderTop: "1px solid var(--border-muted)" }}>
+                      <td style={{ padding: "10px 12px", whiteSpace: "nowrap", color: "var(--text-secondary)" }}>
+                        {new Date(entry.createdAt).toLocaleString()}
+                      </td>
+                      <td style={{ padding: "10px 12px" }}>
+                        {entry.actorName} <span style={{ color: "var(--text-tertiary)" }}>({entry.actorEmail})</span>
+                      </td>
+                      <td style={{ padding: "10px 12px", textTransform: "capitalize" }}>
+                        {entry.action.replace("_", " ")}
+                      </td>
+                      <td style={{ padding: "10px 12px" }}>{entry.targetEmail ?? "—"}</td>
+                      <td style={{ padding: "10px 12px" }}>{entry.detail ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

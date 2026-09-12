@@ -36,6 +36,14 @@ export type AuthResult =
   | { ok: true; user: AuthUser }
   | { ok: false; error: string };
 
+/** Login can't just succeed/fail — admin accounts pause on a 2FA code step
+ * first (see AuthForm.tsx), so this is its own result type rather than
+ * AuthResult. */
+export type LoginResult =
+  | { status: "success"; user: AuthUser }
+  | { status: "twoFactorRequired"; challengeId: string }
+  | { status: "error"; error: string };
+
 function readStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
   try {
@@ -86,12 +94,12 @@ export async function login(
   email: string,
   password: string,
   remember = false
-): Promise<AuthResult> {
+): Promise<LoginResult> {
   const emailError = validateEmail(email);
-  if (emailError) return { ok: false, error: emailError };
+  if (emailError) return { status: "error", error: emailError };
 
   const passwordError = validatePassword(password);
-  if (passwordError) return { ok: false, error: passwordError };
+  if (passwordError) return { status: "error", error: passwordError };
 
   try {
     const res = await fetch("/api/auth/login", {
@@ -101,7 +109,40 @@ export async function login(
     });
 
     if (!res.ok) {
-      return { ok: false, error: await parseErrorMessage(res, "Invalid email or password.") };
+      return { status: "error", error: await parseErrorMessage(res, "Invalid email or password.") };
+    }
+
+    const data = (await res.json()) as { requiresTwoFactor?: boolean; challengeId?: string; user?: AuthUser };
+    if (data.requiresTwoFactor && data.challengeId) {
+      return { status: "twoFactorRequired", challengeId: data.challengeId };
+    }
+
+    const user = data.user as AuthUser;
+    localStorage.setItem(AUTH_STORAGE_KEY, "true");
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    return { status: "success", user };
+  } catch {
+    return { status: "error", error: "Could not reach the server. Please try again." };
+  }
+}
+
+/** Completes an admin login after the 6-digit email code — see `login()`'s
+ * "twoFactorRequired" result. `remember` must be passed again since this is
+ * a separate request from the original password submission. */
+export async function verifyTwoFactor(
+  challengeId: string,
+  code: string,
+  remember = false
+): Promise<AuthResult> {
+  try {
+    const res = await fetch("/api/auth/verify-2fa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ challengeId, code: code.trim(), remember }),
+    });
+
+    if (!res.ok) {
+      return { ok: false, error: await parseErrorMessage(res, "Invalid or expired code.") };
     }
 
     const { user } = (await res.json()) as { user: AuthUser };
@@ -118,19 +159,19 @@ export async function register(
   email: string,
   password: string,
   confirmPassword: string
-): Promise<AuthResult> {
+): Promise<LoginResult> {
   if (!fullName.trim()) {
-    return { ok: false, error: "Full name is required." };
+    return { status: "error", error: "Full name is required." };
   }
 
   const emailError = validateEmail(email);
-  if (emailError) return { ok: false, error: emailError };
+  if (emailError) return { status: "error", error: emailError };
 
   const passwordError = validatePassword(password);
-  if (passwordError) return { ok: false, error: passwordError };
+  if (passwordError) return { status: "error", error: passwordError };
 
   if (password !== confirmPassword) {
-    return { ok: false, error: "Passwords do not match." };
+    return { status: "error", error: "Passwords do not match." };
   }
 
   try {
@@ -141,15 +182,21 @@ export async function register(
     });
 
     if (!res.ok) {
-      return { ok: false, error: await parseErrorMessage(res, "Could not create account.") };
+      return { status: "error", error: await parseErrorMessage(res, "Could not create account.") };
     }
 
-    const { user } = (await res.json()) as { user: AuthUser };
+    // Rare: only if this email is in the backend's ADMIN_EMAILS list.
+    const data = (await res.json()) as { requiresTwoFactor?: boolean; challengeId?: string; user?: AuthUser };
+    if (data.requiresTwoFactor && data.challengeId) {
+      return { status: "twoFactorRequired", challengeId: data.challengeId };
+    }
+
+    const user = data.user as AuthUser;
     localStorage.setItem(AUTH_STORAGE_KEY, "true");
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-    return { ok: true, user };
+    return { status: "success", user };
   } catch {
-    return { ok: false, error: "Could not reach the server. Please try again." };
+    return { status: "error", error: "Could not reach the server. Please try again." };
   }
 }
 

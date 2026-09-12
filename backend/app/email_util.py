@@ -130,6 +130,30 @@ def send_feedback_thanks_email(to: str, name: str, kind: str, message: str) -> N
     )
 
 
+def send_two_factor_code_email(to: str, name: str, code: str) -> None:
+    """Sent on every admin login — the 6-digit code required to complete
+    it. Bilingual, same style as the other transactional emails."""
+    safe_name = html.escape(name)
+    send_email(
+        to=to,
+        subject=f"Your SeaSentry login code: {code}",
+        html_body=_card(f"""
+          <h2 style="color:#2B2D42;">Hi {safe_name}, here's your login code</h2>
+          <p>Enter this code to finish signing in to your admin account. It expires in
+          10 minutes. If you didn't try to sign in, you can ignore this email.</p>
+          <p style="font-size:32px;font-weight:700;letter-spacing:0.15em;color:#2B2D42;
+                    text-align:center;margin:20px 0;">{code}</p>
+          {_divider()}
+          <h2 style="color:#2B2D42;">Salam {safe_name}, giriş kodunuz budur</h2>
+          <p>Admin hesabınıza girişi tamamlamaq üçün bu kodu daxil edin. Kodun etibarlılıq
+          müddəti 10 dəqiqədir. Əgər bu cəhd sizə aid deyilsə, bu e-poçtu nəzərə almaya bilərsiniz.</p>
+          <p style="font-size:32px;font-weight:700;letter-spacing:0.15em;color:#2B2D42;
+                    text-align:center;margin:20px 0;">{code}</p>
+          <p style="color:#666;font-size:12px;margin-top:24px;">— The SeaSentry team / SeaSentry komandası</p>
+        """),
+    )
+
+
 def send_feedback_reply_email(to: str, name: str, original_message: str, reply_message: str) -> None:
     """Sent when an admin answers a submitted question/feedback from the
     admin panel. Bilingual, same as the initial thank-you email."""

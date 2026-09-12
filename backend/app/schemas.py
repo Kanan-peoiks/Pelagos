@@ -59,6 +59,25 @@ class TokenResponse(CamelModel):
     user: UserOut
 
 
+class LoginResponse(CamelModel):
+    """Either a completed login (access_token + user, same as before 2FA
+    existed) or a pending 2FA challenge (requires_two_factor + challenge_id)
+    that the frontend must resolve via /auth/verify-2fa before it gets a
+    token. Non-admin accounts always get the former; admin accounts always
+    get the latter first."""
+
+    requires_two_factor: bool = False
+    challenge_id: Optional[str] = None
+    access_token: Optional[str] = None
+    token_type: str = "bearer"
+    user: Optional[UserOut] = None
+
+
+class VerifyTwoFactorRequest(CamelModel):
+    challenge_id: str
+    code: str
+
+
 # ---- Incidents --------------------------------------------------------------
 
 RiskLevel = Literal["HIGH", "MEDIUM", "LOW"]
@@ -207,3 +226,16 @@ class AdminStatsOut(CamelModel):
     total_admins: int
     logins_today: int
     logins_last_7_days: list[LoginsByDay]
+
+
+class AuditLogOut(CamelModel):
+    id: str
+    actor_name: str
+    actor_email: str
+    action: str
+    target_user_id: Optional[str] = None
+    target_email: Optional[str] = None
+    detail: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)

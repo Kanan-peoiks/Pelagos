@@ -20,7 +20,7 @@ def update_user_role(
     user_id: str,
     payload: schemas.RoleUpdateRequest,
     db: Session = Depends(get_db),
-    _admin: models.User = Depends(require_admin),
+    admin: models.User = Depends(require_admin),
 ):
     user = db.get(models.User, user_id)
     if user is None:
@@ -31,10 +31,32 @@ def update_user_role(
             detail="The demo account's role is fixed and can't be changed.",
         )
 
+    old_role = user.role
     user.role = payload.role
+    db.add(
+        models.AuditLog(
+            actor_user_id=admin.id,
+            actor_name=admin.name,
+            actor_email=admin.email,
+            action="role_change",
+            target_user_id=user.id,
+            target_email=user.email,
+            detail=f"{old_role} → {payload.role}",
+        )
+    )
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/audit-log", response_model=list[schemas.AuditLogOut])
+def list_audit_log(db: Session = Depends(get_db), _admin: models.User = Depends(require_admin)):
+    return (
+        db.query(models.AuditLog)
+        .order_by(models.AuditLog.created_at.desc())
+        .limit(200)
+        .all()
+    )
 
 
 @router.get("/stats", response_model=schemas.AdminStatsOut)

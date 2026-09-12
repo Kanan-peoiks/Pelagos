@@ -173,7 +173,8 @@ export default function MapPanel({
 }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInst = useRef<L.Map | null>(null);
-  const layersRef = useRef<(L.Marker | L.Circle | L.Polygon | L.Polyline)[]>([]);
+  const layersRef = useRef<(L.Marker | L.Circle | L.Polygon | L.Polyline | L.CircleMarker)[]>([]);
+  const driftAnimRef = useRef<{ id: number }[]>([]);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [loaded, setLoaded] = useState(false);
   const onSelectRef = useRef(onIncidentSelect);
@@ -238,6 +239,8 @@ export default function MapPanel({
     import("leaflet").then(({ default: L }) => {
       layersRef.current.forEach((layer) => map.removeLayer(layer));
       layersRef.current = [];
+      driftAnimRef.current.forEach((h) => cancelAnimationFrame(h.id));
+      driftAnimRef.current = [];
 
       // Risk zones — yellow/orange translucent
       riskZones.forEach((zone) => {
@@ -319,6 +322,36 @@ export default function MapPanel({
             );
             driftLine.addTo(map);
             layersRef.current.push(driftLine);
+
+            // A small dot drifts source → slick along the dashed line, fading
+            // in/out at each end (not snapping back) to read as "this is the
+            // direction the spill traveled," not as UI decoration.
+            const driftDot = L.circleMarker([estimate.lat, estimate.lng], {
+              radius: 3,
+              color: "#B91C1C",
+              weight: 1,
+              fillColor: "#FCA5A5",
+              fillOpacity: 0,
+              opacity: 0,
+            });
+            driftDot.addTo(map);
+            layersRef.current.push(driftDot);
+
+            const holder = { id: 0 };
+            const durationMs = 3400;
+            const startTime = performance.now();
+            const tick = (now: number) => {
+              const t = ((now - startTime) % durationMs) / durationMs;
+              driftDot.setLatLng([
+                estimate.lat + (inc.lat - estimate.lat) * t,
+                estimate.lng + (inc.lng - estimate.lng) * t,
+              ]);
+              const fade = Math.sin(t * Math.PI);
+              driftDot.setStyle({ opacity: fade * 0.85, fillOpacity: fade * 0.85 });
+              holder.id = requestAnimationFrame(tick);
+            };
+            holder.id = requestAnimationFrame(tick);
+            driftAnimRef.current.push(holder);
           }
         }
       });
@@ -336,6 +369,11 @@ export default function MapPanel({
         layersRef.current.push(marker);
       });
     });
+
+    return () => {
+      driftAnimRef.current.forEach((h) => cancelAnimationFrame(h.id));
+      driftAnimRef.current = [];
+    };
   }, [incidents, vessels, riskZones, loaded, liveIncidentId, focusedIncidentId, sourceEstimates]);
 
   useEffect(() => {

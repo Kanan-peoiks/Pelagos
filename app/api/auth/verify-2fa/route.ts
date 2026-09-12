@@ -4,8 +4,8 @@ import { backendUrl } from "@/lib/server/backend";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
-  if (!body?.name || !body?.email || !body?.password) {
-    return NextResponse.json({ error: "Name, email and password are required." }, { status: 400 });
+  if (!body?.challengeId || !body?.code) {
+    return NextResponse.json({ error: "A code is required." }, { status: 400 });
   }
 
   let backend: string;
@@ -17,10 +17,10 @@ export async function POST(request: Request) {
 
   let res: Response;
   try {
-    res = await fetch(`${backend}/auth/register`, {
+    res = await fetch(`${backend}/auth/verify-2fa`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: body.name, email: body.email, password: body.password }),
+      body: JSON.stringify({ challengeId: body.challengeId, code: body.code }),
       cache: "no-store",
     });
   } catch {
@@ -30,19 +30,13 @@ export async function POST(request: Request) {
   if (!res.ok) {
     const detail = await res.json().catch(() => null);
     return NextResponse.json(
-      { error: detail?.detail || "Could not create account." },
+      { error: detail?.detail || "Invalid or expired code." },
       { status: res.status }
     );
   }
 
   const data = await res.json();
-
-  // Rare: only triggers if this email is in the backend's ADMIN_EMAILS list,
-  // so a fresh admin account still has to prove it owns the inbox before
-  // getting a session, same as a normal admin login.
-  if (data.requiresTwoFactor) {
-    return NextResponse.json({ requiresTwoFactor: true, challengeId: data.challengeId });
-  }
+  const maxAge = body.remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
 
   const response = NextResponse.json({ user: data.user });
   response.cookies.set(AUTH_COOKIE_NAME, data.accessToken, {
@@ -50,7 +44,7 @@ export async function POST(request: Request) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge,
   });
   return response;
 }

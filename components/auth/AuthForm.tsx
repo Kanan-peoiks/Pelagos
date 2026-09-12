@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Loader2, ArrowLeft } from "lucide-react";
-import { login, register } from "@/lib/auth";
+import { ArrowRight, Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
+import { login, register, verifyTwoFactor } from "@/lib/auth";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 
 type Mode = "login" | "register";
@@ -26,6 +26,17 @@ export default function AuthForm({ mode }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Set once an admin account's password checks out — switches the form to
+  // the "enter the code we emailed you" step instead of finishing login.
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+
+  const goToNext = () => {
+    const safeNext =
+      nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard";
+    router.push(safeNext);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -38,15 +49,100 @@ export default function AuthForm({ mode }: Props) {
 
     setLoading(false);
 
+    if (result.status === "error") {
+      setError(result.error);
+      return;
+    }
+    if (result.status === "twoFactorRequired") {
+      setChallengeId(result.challengeId);
+      return;
+    }
+
+    goToNext();
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challengeId) return;
+    setError(null);
+    setLoading(true);
+
+    const result = await verifyTwoFactor(challengeId, code, remember);
+
+    setLoading(false);
+
     if (!result.ok) {
       setError(result.error);
       return;
     }
 
-    const safeNext =
-      nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard";
-    router.push(safeNext);
+    goToNext();
   };
+
+  if (challengeId) {
+    return (
+      <div className="auth-page">
+        <div className="auth-page-bg" aria-hidden />
+        <div className="auth-page-shell">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <button
+              type="button"
+              className="auth-back"
+              onClick={() => {
+                setChallengeId(null);
+                setCode("");
+                setError(null);
+              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
+            >
+              <ArrowLeft size={14} /> Back
+            </button>
+            <ThemeToggle />
+          </div>
+
+          <div className="auth-card">
+            <div className="auth-card-brand">
+              <ShieldCheck size={36} color="var(--accent)" />
+              <div>
+                <div className="auth-card-title">Verify it&apos;s you</div>
+                <div className="auth-card-sub">Admin accounts require a login code</div>
+              </div>
+            </div>
+
+            <h1 className="auth-heading">Enter your code</h1>
+            <p className="auth-lede">
+              We emailed a 6-digit code to {email}. It expires in 10 minutes.
+            </p>
+
+            <form onSubmit={handleVerifyCode} className="auth-form" noValidate>
+              <div className="auth-field">
+                <label htmlFor="code">Login code</label>
+                <input
+                  id="code"
+                  className="auth-input"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  style={{ letterSpacing: "0.3em", textAlign: "center", fontSize: 20 }}
+                  autoFocus
+                />
+              </div>
+
+              {error && <div className="auth-error" role="alert">{error}</div>}
+
+              <button type="submit" className="auth-button" disabled={loading || code.length !== 6}>
+                {loading ? <Loader2 size={18} className="spinner" /> : <>Verify <ArrowRight size={16} /></>}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">

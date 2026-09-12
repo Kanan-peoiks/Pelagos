@@ -108,6 +108,42 @@ class PasswordResetToken(Base):
     used = Column(Boolean, nullable=False, default=False)
 
 
+class TwoFactorCode(Base):
+    """A short-lived 6-digit email code required to complete login for
+    role="admin" accounts. One row per login attempt; `id` doubles as the
+    "challenge id" the frontend holds between submitting the password and
+    submitting the code, so the not-yet-authenticated client never needs to
+    resend the password."""
+
+    __tablename__ = "two_factor_codes"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, nullable=False)
+    code_hash = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, nullable=False, default=False)
+
+
+class AuditLog(Base):
+    """Records sensitive admin actions (currently: role changes) for
+    accountability — who changed what, on whom, and when. Denormalizes actor
+    name/email so the admin panel's history list reads fine even if that
+    user is later deleted or renamed."""
+
+    __tablename__ = "audit_log"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    actor_user_id = Column(String, nullable=False)
+    actor_name = Column(String, nullable=False)
+    actor_email = Column(String, nullable=False)
+    action = Column(String, nullable=False)  # e.g. "role_change"
+    target_user_id = Column(String, nullable=True)
+    target_email = Column(String, nullable=True)
+    detail = Column(String, nullable=True)  # e.g. "viewer -> operator"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Feedback(Base):
     __tablename__ = "feedback"
 
