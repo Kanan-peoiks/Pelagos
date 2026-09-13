@@ -37,3 +37,9 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: https://seasentry.vercel.app
+      - key: REQUIRE_ADMIN_2FA
+        # Off until the SMTP sender account is confirmed working again —
+        # otherwise admin login would depend on an email that can't be sent.
+        # Once SMTP is restored/replaced, flip this to "true" (env var only,
+        # no redeploy of code needed) to turn the built 2FA flow back on.
+        value: "false"

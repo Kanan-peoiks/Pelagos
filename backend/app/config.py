@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     # Comma-separated emails that are auto-promoted to the "admin" role the
     # moment they register or log in — see auth.py's _maybe_promote_admin().
     admin_emails: str = ""
+    # Gate for the email-code 2FA step on admin login (see auth.py's
+    # _send_two_factor_challenge). Defaults OFF so deploys never depend on
+    # SMTP being reachable — flip to true once the sender account is
+    # confirmed working, no code change needed, just this env var.
+    require_admin_2fa: bool = False
 
     # Gmail SMTP for password-reset emails (app password, not the account
     # password). Left blank, forgot-password requests are logged instead of
