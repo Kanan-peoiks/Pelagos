@@ -96,7 +96,7 @@ def register(payload: schemas.RegisterRequest, request: Request, db: Session = D
 
     _maybe_promote_admin(user, db)
 
-    if user.role == "admin":
+    if user.role == "admin" and settings.require_admin_2fa:
         challenge_id = _send_two_factor_challenge(db, user)
         return schemas.LoginResponse(requires_two_factor=True, challenge_id=challenge_id)
 
@@ -121,7 +121,7 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
     reset_attempts(rate_limit_key)
     _maybe_promote_admin(user, db)
 
-    if user.role == "admin":
+    if user.role == "admin" and settings.require_admin_2fa:
         challenge_id = _send_two_factor_challenge(db, user)
         return schemas.LoginResponse(requires_two_factor=True, challenge_id=challenge_id)
 
