@@ -2,11 +2,11 @@
 
 import {
   Incident,
-  INCIDENT_STATUS_LABEL,
   formatAreaM2,
   formatTimeAZT,
   RiskLevel,
 } from "@/lib/mock-data";
+import { useLanguage } from "@/lib/useLanguage";
 
 type Props = {
   incidents: Incident[];
@@ -19,6 +19,7 @@ function riskClass(risk: RiskLevel) {
 }
 
 export default function RecentIncidents({ incidents }: Props) {
+  const { t } = useLanguage();
   const sorted = [...incidents].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
@@ -26,9 +27,9 @@ export default function RecentIncidents({ incidents }: Props) {
   return (
     <div className="panel" style={{ height: "100%" }}>
       <div className="panel-header">
-        <span className="panel-title">Recent Incidents</span>
+        <span className="panel-title">{t.recentIncidents.title}</span>
         <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-          {sorted.length} records
+          {t.recentIncidents.records(sorted.length)}
         </span>
       </div>
 
@@ -45,7 +46,14 @@ export default function RecentIncidents({ incidents }: Props) {
             zIndex: 1,
           }}
         >
-          {["ID", "Location", "Time", "Area", "Risk", "Status"].map((h) => (
+          {[
+            t.recentIncidents.colId,
+            t.recentIncidents.colLocation,
+            t.recentIncidents.colTime,
+            t.recentIncidents.colArea,
+            t.recentIncidents.colRisk,
+            t.recentIncidents.colStatus,
+          ].map((h) => (
             <span
               key={h}
               style={{
@@ -108,9 +116,9 @@ export default function RecentIncidents({ incidents }: Props) {
             >
               {formatAreaM2(inc.areaM2)}
             </span>
-            <span className={riskClass(inc.risk)}>{inc.risk}</span>
+            <span className={riskClass(inc.risk)}>{t.risk[inc.risk]}</span>
             <span className={`pill pill-${inc.status}`}>
-              {INCIDENT_STATUS_LABEL[inc.status]}
+              {t.status[inc.status]}
             </span>
           </div>
         ))}

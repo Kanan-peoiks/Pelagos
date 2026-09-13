@@ -9,6 +9,7 @@ import DetailPanel from "@/components/ui/DetailPanel";
 import { useIncidentStore } from "@/lib/incident-store";
 import { distanceToIncidentKm } from "@/lib/mock-data";
 import type { OpsVessel } from "@/lib/types";
+import { useLanguage } from "@/lib/useLanguage";
 import { Ship, Radar, AlertTriangle, Link2 } from "lucide-react";
 
 export default function VesselsPage() {
@@ -20,6 +21,15 @@ export default function VesselsPage() {
 }
 
 function VesselsContent() {
+  const { t } = useLanguage();
+  const vesselStatusLabel = (status: OpsVessel["status"]) =>
+    ({
+      "In port": t.vessels.statusInPort,
+      Approaching: t.vessels.statusApproaching,
+      Transiting: t.vessels.statusTransiting,
+      Suspicious: t.vessels.statusSuspicious,
+      Response: t.vessels.statusResponse,
+    })[status];
   const { vessels, getIncidentById } = useIncidentStore();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -56,30 +66,30 @@ function VesselsContent() {
     <>
       <div className="dashboard-scroll">
         <PageHeader
-          title="Vessels"
-          subtitle="AIS situational picture for the Caspian operational corridor. Not connected to a live AIS feed."
+          title={t.vessels.title}
+          subtitle={t.vessels.subtitle}
         />
 
         <section
           style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}
           className="ops-stat-grid"
         >
-          <StatCard label="Total Vessels" value={vessels.length} icon={<Ship size={15} />} />
+          <StatCard label={t.vessels.totalVessels} value={vessels.length} icon={<Ship size={15} />} />
           <StatCard
-            label="Nearby Vessels"
+            label={t.vessels.nearbyVessels}
             value={nearby}
-            hint="< 5 km from an active incident"
+            hint={t.vessels.nearbyHint}
             accent="var(--accent)"
             icon={<Radar size={15} />}
           />
           <StatCard
-            label="Suspicious"
+            label={t.vessels.suspicious}
             value={suspicious}
             accent="var(--color-med)"
             icon={<AlertTriangle size={15} />}
           />
           <StatCard
-            label="Linked to Incidents"
+            label={t.vessels.linkedToIncidents}
             value={involved}
             accent="var(--color-high)"
             icon={<Link2 size={15} />}
@@ -89,33 +99,33 @@ function VesselsContent() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search vessel name, MMSI, type…"
+          searchPlaceholder={t.vessels.searchPlaceholder}
           filters={[
             {
               id: "status",
-              label: "Status",
+              label: t.vessels.status,
               value: statusFilter,
               onChange: setStatusFilter,
               options: [
-                { value: "all", label: "All statuses" },
-                { value: "In port", label: "In port" },
-                { value: "Approaching", label: "Approaching" },
-                { value: "Transiting", label: "Transiting" },
-                { value: "Suspicious", label: "Suspicious" },
-                { value: "Response", label: "Response" },
+                { value: "all", label: t.vessels.allStatuses },
+                { value: "In port", label: t.vessels.statusInPort },
+                { value: "Approaching", label: t.vessels.statusApproaching },
+                { value: "Transiting", label: t.vessels.statusTransiting },
+                { value: "Suspicious", label: t.vessels.statusSuspicious },
+                { value: "Response", label: t.vessels.statusResponse },
               ],
             },
           ]}
           trailing={
             <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-              {filtered.length} vessel{filtered.length === 1 ? "" : "s"}
+              {t.vessels.vesselCount(filtered.length)}
             </span>
           }
         />
 
         <div className="panel panel-static">
           <div className="panel-header">
-            <span className="panel-title">Vessel register</span>
+            <span className="panel-title">{t.vessels.vesselRegister}</span>
           </div>
           <div className="panel-body" style={{ overflowX: "auto" }}>
             <div
@@ -137,23 +147,23 @@ function VesselsContent() {
                 color: "var(--text-tertiary)",
               }}
             >
-              <span>Vessel</span>
-              <span>MMSI</span>
-              <span>Type</span>
-              <span>Position</span>
-              <span>Speed</span>
-              <span>Heading</span>
-              <span>Distance / Link</span>
-              <span>Status</span>
+              <span>{t.vessels.colVessel}</span>
+              <span>{t.vessels.colMmsi}</span>
+              <span>{t.vessels.colType}</span>
+              <span>{t.vessels.colPosition}</span>
+              <span>{t.vessels.colSpeed}</span>
+              <span>{t.vessels.colHeading}</span>
+              <span>{t.vessels.colDistanceLink}</span>
+              <span>{t.vessels.colStatus}</span>
             </div>
 
             {filtered.length === 0 && (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-secondary)" }}>
                 {vessels.length === 0
-                  ? "No vessel data yet."
+                  ? t.vessels.noVesselData
                   : search.trim()
-                    ? `No results for "${search.trim()}" — check the spelling or try a different search term.`
-                    : "No vessels match the selected filters."}
+                    ? t.common.noResultsFor(search.trim())
+                    : t.vessels.noVesselsMatchFilters}
               </div>
             )}
 
@@ -200,11 +210,11 @@ function VesselsContent() {
                   <span style={{ fontSize: 12 }}>{v.heading}°</span>
                   <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     {inc && dist != null
-                      ? `${dist.toFixed(1)} km from ${inc.displayId}`
+                      ? t.vessels.kmFrom(dist.toFixed(1), inc.displayId)
                       : "—"}
                   </span>
                   <span className={`pill ${v.status === "Suspicious" ? "pill-medium" : "pill-detected"}`}>
-                    {v.status}
+                    {vesselStatusLabel(v.status)}
                   </span>
                 </div>
               );
@@ -223,23 +233,23 @@ function VesselsContent() {
           <div style={{ display: "grid", gap: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Coordinates</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t.vessels.coordinates}</div>
                 <div style={{ fontFamily: "ui-monospace, monospace", marginTop: 4 }}>
                   {selected.lat.toFixed(4)}°N, {selected.lng.toFixed(4)}°E
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Speed / Heading</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t.vessels.speedHeading}</div>
                 <div style={{ marginTop: 4 }}>
                   {selected.speedKnots.toFixed(1)} kn · {selected.heading}°
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Status</div>
-                <div style={{ marginTop: 4 }}>{selected.status}</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t.vessels.colStatus}</div>
+                <div style={{ marginTop: 4 }}>{vesselStatusLabel(selected.status)}</div>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Last update</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t.vessels.lastUpdate}</div>
                 <div style={{ marginTop: 4 }}>{selected.lastUpdate}</div>
               </div>
             </div>
@@ -253,26 +263,26 @@ function VesselsContent() {
               }}
             >
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
-                Nearby incidents / risk relation
+                {t.vessels.nearbyRelation}
               </div>
               {relatedIncident ? (
                 <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                  Linked to <strong style={{ color: "var(--accent)" }}>{relatedIncident.displayId}</strong> —{" "}
+                  {t.vessels.linkedTo} <strong style={{ color: "var(--accent)" }}>{relatedIncident.displayId}</strong> —{" "}
                   {relatedIncident.location}
                   <br />
-                  Distance: {distanceToIncidentKm(selected, relatedIncident).toFixed(1)} km
+                  {t.vessels.distance}: {distanceToIncidentKm(selected, relatedIncident).toFixed(1)} km
                   <br />
-                  Risk: {relatedIncident.risk} · Status: {relatedIncident.status.replace("_", " ")}
+                  {t.vessels.riskStatus}: {t.risk[relatedIncident.risk]} · {t.vessels.colStatus}: {t.status[relatedIncident.status]}
                 </div>
               ) : (
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  No nearby active incident association.
+                  {t.vessels.noNearbyAssociation}
                 </div>
               )}
             </div>
 
             <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: 0 }}>
-              Demonstration AIS data only. A live AIS API can replace this layer later.
+              {t.vessels.demoDataNote}
             </p>
           </div>
         )}

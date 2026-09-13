@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { RefreshCw, Waves, Wind, Navigation2, AlertTriangle } from "lucide-react";
 import type { Port } from "@/lib/mock-data";
+import { useLanguage } from "@/lib/useLanguage";
 
 // ─── Thresholds for hazard highlighting ───────────────────────────────────────
 const GUST_WARN_KT  = 25;  // amber above this
@@ -262,6 +263,7 @@ type Props = { port: Port };
 type Status = "idle" | "loading" | "ok" | "error";
 
 export default function SeaWeatherWidget({ port }: Props) {
+  const { t } = useLanguage();
   const [data, setData]       = useState<WeatherData | null>(null);
   const [status, setStatus]   = useState<Status>("idle");
   const [updatedAt, setUpdatedAt] = useState<number>(0);
@@ -326,11 +328,11 @@ export default function SeaWeatherWidget({ port }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {status === "ok" && minutesAgo < 60 && (
             <span style={{ fontSize: "10px", color: "var(--text-secondary)" }}>
-              {minutesAgo < 1 ? "Just updated" : `${minutesAgo}m ago`}
+              {minutesAgo < 1 ? t.seaWeather.justUpdated : t.seaWeather.minAgo(minutesAgo)}
             </span>
           )}
           <div
-            title="Refresh now"
+            title={t.seaWeather.refreshNow}
             style={{
               display: "flex",
               alignItems: "center",
@@ -366,7 +368,7 @@ export default function SeaWeatherWidget({ port }: Props) {
         }}>
           <AlertTriangle size={24} color="var(--color-med)" />
           <span style={{ fontSize: "12px", textAlign: "center", color: "var(--text-secondary)" }}>
-            Weather data unavailable
+            {t.seaWeather.unavailable}
           </span>
           <button
             onClick={load}
@@ -381,7 +383,7 @@ export default function SeaWeatherWidget({ port }: Props) {
               fontFamily: "inherit",
             }}
           >
-            Retry
+            {t.seaWeather.retry}
           </button>
         </div>
       ) : (
@@ -404,33 +406,33 @@ export default function SeaWeatherWidget({ port }: Props) {
               <MetricCol
                 id="sea-weather-wind"
                 icon={<Wind size={26} />}
-                label="Wind"
+                label={t.seaWeather.wind}
                 primaryValue={`${data.windSpeedKt.toFixed(1)} kt`}
                 dirDeg={data.windDir}
                 alertColor={gustColor}
-                secondaryLabel={`${data.windDir}° ${degToCompass(data.windDir)} · gust ${data.windGustKt.toFixed(0)} kt`}
+                secondaryLabel={t.seaWeather.gust(data.windDir, degToCompass(data.windDir), data.windGustKt.toFixed(0))}
               />
 
               {/* Waves column */}
               <MetricCol
                 id="sea-weather-waves"
                 icon={<Waves size={26} />}
-                label="Waves"
+                label={t.seaWeather.waves}
                 primaryValue={`${data.waveHeightM.toFixed(1)} m`}
                 dirDeg={data.waveDir}
                 alertColor={waveColor}
-                secondaryLabel={`${data.waveDir}° ${degToCompass(data.waveDir)} · ${data.wavePeriodS.toFixed(0)}s period`}
+                secondaryLabel={t.seaWeather.period(data.waveDir, degToCompass(data.waveDir), data.wavePeriodS.toFixed(0))}
               />
 
               {/* Currents column */}
               <MetricCol
                 id="sea-weather-current"
                 icon={<Navigation2 size={26} />}
-                label="Current"
+                label={t.seaWeather.current}
                 primaryValue={`${data.currentKt.toFixed(2)} kt`}
                 dirDeg={data.currentDir}
                 alertColor={undefined}
-                secondaryLabel={`${data.currentDir}° ${degToCompass(data.currentDir)}`}
+                secondaryLabel={t.seaWeather.direction(data.currentDir, degToCompass(data.currentDir))}
               />
             </>
           ) : null}

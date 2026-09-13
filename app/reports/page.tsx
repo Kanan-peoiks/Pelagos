@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import StatCard from "@/components/ui/StatCard";
 import { useIncidentStore } from "@/lib/incident-store";
 import { formatAreaM2, formatDateTimeAZT } from "@/lib/mock-data";
+import { useLanguage } from "@/lib/useLanguage";
 import {
   FileBarChart,
   Maximize2,
@@ -40,6 +41,7 @@ export default function ReportsPage() {
 }
 
 function ReportsContent() {
+  const { t } = useLanguage();
   const { report, incidents, stats } = useIncidentStore();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
@@ -178,8 +180,8 @@ function ReportsContent() {
     <>
       <div className="dashboard-scroll">
         <PageHeader
-          title="Reports"
-          subtitle="Operational intelligence overview across the Caspian monitoring programme. Generated from the shared incident dataset."
+          title={t.reports.title}
+          subtitle={t.reports.subtitle}
           actions={
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
@@ -200,7 +202,7 @@ function ReportsContent() {
                   fontFamily: "inherit",
                 }}
               >
-                <FileSpreadsheet size={15} /> Export CSV
+                <FileSpreadsheet size={15} /> {t.reports.exportCsv}
               </button>
               <button
                 type="button"
@@ -220,7 +222,7 @@ function ReportsContent() {
                   fontFamily: "inherit",
                 }}
               >
-                <FileText size={15} /> Export PDF
+                <FileText size={15} /> {t.reports.exportPdf}
               </button>
               <button
                 type="button"
@@ -240,7 +242,7 @@ function ReportsContent() {
                   fontFamily: "inherit",
                 }}
               >
-                <Download size={15} /> Generate Report
+                <Download size={15} /> {t.reports.generateReport}
               </button>
             </div>
           }
@@ -250,32 +252,32 @@ function ReportsContent() {
           style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}
           className="report-stat-grid"
         >
-          <StatCard label="Total Incidents" value={report.totalIncidents} icon={<FileBarChart size={15} />} />
+          <StatCard label={t.reports.totalIncidents} value={report.totalIncidents} icon={<FileBarChart size={15} />} />
           <StatCard
-            label="Total Detected Area"
+            label={t.reports.totalDetectedArea}
             value={formatAreaM2(report.totalDetectedAreaM2)}
             icon={<Maximize2 size={15} />}
           />
           <StatCard
-            label="Total Cleaned Area"
+            label={t.reports.totalCleanedArea}
             value={formatAreaM2(report.totalCleanedAreaM2)}
             accent="var(--color-low)"
             icon={<Droplets size={15} />}
           />
           <StatCard
-            label="High-Risk Incidents"
+            label={t.reports.highRiskIncidents}
             value={report.highRiskCount}
             accent="var(--color-med)"
             icon={<ShieldAlert size={15} />}
           />
           <StatCard
-            label="Average AI Confidence"
+            label={t.reports.averageAiConfidence}
             value={`${report.averageAiConfidence}%`}
             accent="var(--accent)"
             icon={<Percent size={15} />}
           />
           <StatCard
-            label="Resolved Incidents"
+            label={t.reports.resolvedIncidents}
             value={report.resolvedCount}
             accent="var(--color-low)"
             icon={<CheckCircle2 size={15} />}
@@ -285,20 +287,20 @@ function ReportsContent() {
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }} className="report-panels">
           <div className="panel panel-static">
             <div className="panel-header">
-              <span className="panel-title">Operational snapshot</span>
+              <span className="panel-title">{t.reports.operationalSnapshot}</span>
             </div>
             <div className="panel-body" style={{ padding: 16, display: "grid", gap: 12 }}>
-              <Row label="Active incidents" value={String(stats.active)} />
-              <Row label="Under review" value={String(stats.underReview)} />
-              <Row label="Resolved" value={String(stats.resolved)} />
-              <Row label="Avg response / alert latency" value={`${report.avgResponseTimeMin} min`} />
-              <Row label="Dataset scope" value="Caspian Sea · Azerbaijan corridor" />
+              <Row label={t.reports.activeIncidents} value={String(stats.active)} />
+              <Row label={t.reports.underReview} value={String(stats.underReview)} />
+              <Row label={t.reports.resolved} value={String(stats.resolved)} />
+              <Row label={t.reports.avgResponseLatency} value={`${report.avgResponseTimeMin} min`} />
+              <Row label={t.reports.datasetScope} value={t.reports.datasetScopeValue} />
             </div>
           </div>
 
           <div className="panel panel-static">
             <div className="panel-header">
-              <span className="panel-title">Risk distribution</span>
+              <span className="panel-title">{t.reports.riskDistribution}</span>
             </div>
             <div className="panel-body" style={{ padding: 16, display: "grid", gap: 14 }}>
               {(["HIGH", "MEDIUM", "LOW"] as const).map((level) => {
@@ -315,7 +317,7 @@ function ReportsContent() {
                 return (
                   <div key={level}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
-                      <span>{level}</span>
+                      <span>{t.risk[level]}</span>
                       <span style={{ color: "var(--text-secondary)" }}>
                         {count} ({pct}%)
                       </span>
@@ -334,27 +336,26 @@ function ReportsContent() {
           <div className="panel-header">
             <span className="panel-title">
               <History size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
-              Report history
+              {t.reports.reportHistory}
             </span>
             <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-              {reportsLoading ? "Loading…" : `${savedReports.length} generated`}
+              {reportsLoading ? t.common.loading : t.reports.generatedCount(savedReports.length)}
             </span>
           </div>
           <div className="panel-body" style={{ overflowX: "auto" }}>
             {!reportsLoading && savedReports.length === 0 ? (
               <div style={{ padding: 20, fontSize: 13, color: "var(--text-secondary)" }}>
-                No reports generated yet — use &quot;Generate PDF Report&quot; from an incident&apos;s response
-                section to create one.
+                {t.reports.noReportsYet}
               </div>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--text-tertiary)", fontSize: 11 }}>
-                    <th style={{ padding: "8px 12px" }}>Incident</th>
-                    <th style={{ padding: "8px 12px" }}>Team</th>
-                    <th style={{ padding: "8px 12px" }}>Cost</th>
-                    <th style={{ padding: "8px 12px" }}>Generated by</th>
-                    <th style={{ padding: "8px 12px" }}>Generated at</th>
+                    <th style={{ padding: "8px 12px" }}>{t.reports.colIncident}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.reports.colTeam}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.reports.colCost}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.reports.colGeneratedBy}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.reports.colGeneratedAt}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -396,16 +397,15 @@ function ReportsContent() {
                 zIndex: 90,
               }}
             >
-              <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>Report preview</h2>
+              <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{t.reports.previewTitle}</h2>
               <p style={{ margin: "0 0 16px", color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.5 }}>
-                Official report generation is not connected yet. This preview summarizes the current
-                in-memory demo dataset only and is not an official operational export.
+                {t.reports.previewBody}
               </p>
               <div style={{ display: "grid", gap: 8, fontSize: 13, marginBottom: 18 }}>
-                <Row label="Total incidents" value={String(report.totalIncidents)} />
-                <Row label="Detected area" value={formatAreaM2(report.totalDetectedAreaM2)} />
-                <Row label="Cleaned area" value={formatAreaM2(report.totalCleanedAreaM2)} />
-                <Row label="Avg AI confidence" value={`${report.averageAiConfidence}%`} />
+                <Row label={t.reports.totalIncidents} value={String(report.totalIncidents)} />
+                <Row label={t.reports.detectedArea} value={formatAreaM2(report.totalDetectedAreaM2)} />
+                <Row label={t.reports.cleanedArea} value={formatAreaM2(report.totalCleanedAreaM2)} />
+                <Row label={t.reports.avgAiConfidence} value={`${report.averageAiConfidence}%`} />
               </div>
               <button
                 type="button"
@@ -421,7 +421,7 @@ function ReportsContent() {
                   fontFamily: "inherit",
                 }}
               >
-                Close
+                {t.reports.close}
               </button>
             </div>
           </>

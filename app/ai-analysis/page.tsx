@@ -11,6 +11,7 @@ import IncidentDetailsPanel from "@/components/incidents/IncidentDetailsPanel";
 import { useIncidentStore } from "@/lib/incident-store";
 import { formatAreaM2, formatDateTimeAZT } from "@/lib/mock-data";
 import type { Incident } from "@/lib/types";
+import { useLanguage } from "@/lib/useLanguage";
 import { Brain, Percent, Maximize2, Clock, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
 
 type AiAccuracy = {
@@ -36,6 +37,7 @@ export default function AiAnalysisPage() {
 }
 
 function AiAnalysisContent() {
+  const { t } = useLanguage();
   const { aiAnalyses, getIncidentById } = useIncidentStore();
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -76,8 +78,8 @@ function AiAnalysisContent() {
     <>
       <div className="dashboard-scroll">
         <PageHeader
-          title="AI Analysis"
-          subtitle="Satellite spill analysis packages prepared for human operators. No live AI model is connected."
+          title={t.aiAnalysis.title}
+          subtitle={t.aiAnalysis.subtitle}
         />
 
         <div
@@ -91,9 +93,8 @@ function AiAnalysisContent() {
             lineHeight: 1.5,
           }}
         >
-          <strong style={{ color: "var(--color-med-text)" }}>Human review required.</strong>{" "}
-          AI analysis supports the operator&apos;s decision. It does not make the final operational
-          decision.
+          <strong style={{ color: "var(--color-med-text)" }}>{t.aiAnalysis.humanReviewRequired}</strong>{" "}
+          {t.aiAnalysis.humanReviewBody}
         </div>
 
         {accuracy && (
@@ -101,25 +102,23 @@ function AiAnalysisContent() {
             <div className="panel-header">
               <span className="panel-title">
                 <ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
-                AI track record — {accuracy.year}
+                {t.aiAnalysis.trackRecordTitle(accuracy.year)}
               </span>
               <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                Based on human-reviewed incidents only
+                {t.aiAnalysis.basedOnReviewed}
               </span>
             </div>
             <div className="panel-body" style={{ padding: 16 }}>
               {accuracy.reviewed === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  No incidents have been reviewed by a human yet this year — accuracy can&apos;t be
-                  calculated until at least one is confirmed or rejected.
+                  {t.aiAnalysis.noReviewedYet}
                 </div>
               ) : (
                 <>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
                     <span style={{ fontSize: 32, fontWeight: 700 }}>{accuracy.accuracyPct}%</span>
                     <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                      of {accuracy.reviewed} human-reviewed detections this year were confirmed as
-                      real spills
+                      {t.aiAnalysis.ofReviewedConfirmed(accuracy.reviewed)}
                     </span>
                   </div>
                   <div
@@ -133,10 +132,10 @@ function AiAnalysisContent() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <CheckCircle2 size={16} color="var(--color-low-text)" />
                       <div>
-                        <div style={{ fontWeight: 650 }}>{accuracy.confirmed} confirmed</div>
+                        <div style={{ fontWeight: 650 }}>{accuracy.confirmed} {t.aiAnalysis.confirmed}</div>
                         <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                           {accuracy.avgConfidenceConfirmed !== null
-                            ? `avg. model confidence ${accuracy.avgConfidenceConfirmed}%`
+                            ? t.aiAnalysis.avgConfidence(accuracy.avgConfidenceConfirmed)
                             : "—"}
                         </div>
                       </div>
@@ -144,10 +143,10 @@ function AiAnalysisContent() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <XCircle size={16} color="var(--color-high-text)" />
                       <div>
-                        <div style={{ fontWeight: 650 }}>{accuracy.falsePositive} false positive</div>
+                        <div style={{ fontWeight: 650 }}>{accuracy.falsePositive} {t.aiAnalysis.falsePositive}</div>
                         <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                           {accuracy.avgConfidenceFalsePositive !== null
-                            ? `avg. model confidence ${accuracy.avgConfidenceFalsePositive}%`
+                            ? t.aiAnalysis.avgConfidence(accuracy.avgConfidenceFalsePositive)
                             : "—"}
                         </div>
                       </div>
@@ -155,8 +154,8 @@ function AiAnalysisContent() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <Clock size={16} color="var(--color-med-text)" />
                       <div>
-                        <div style={{ fontWeight: 650 }}>{accuracy.stillUnderReview} still under review</div>
-                        <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>not counted yet</div>
+                        <div style={{ fontWeight: 650 }}>{accuracy.stillUnderReview} {t.aiAnalysis.stillUnderReview}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{t.aiAnalysis.notCountedYet}</div>
                       </div>
                     </div>
                   </div>
@@ -170,16 +169,16 @@ function AiAnalysisContent() {
           style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}
           className="ops-stat-grid"
         >
-          <StatCard label="Analyses" value={aiAnalyses.length} icon={<Brain size={15} />} />
-          <StatCard label="Avg Spill Probability" value={`${avgProb}%`} accent="var(--accent)" icon={<Percent size={15} />} />
+          <StatCard label={t.aiAnalysis.analyses} value={aiAnalyses.length} icon={<Brain size={15} />} />
+          <StatCard label={t.aiAnalysis.avgSpillProbability} value={`${avgProb}%`} accent="var(--accent)" icon={<Percent size={15} />} />
           <StatCard
-            label="Pending Human Review"
+            label={t.aiAnalysis.pendingHumanReview}
             value={pendingReview}
             accent="var(--color-med)"
             icon={<Clock size={15} />}
           />
           <StatCard
-            label="Largest Estimated Area"
+            label={t.aiAnalysis.largestEstimatedArea}
             value={formatAreaM2(Math.max(...aiAnalyses.map((a) => a.estimatedAreaM2), 0))}
             icon={<Maximize2 size={15} />}
           />
@@ -187,13 +186,13 @@ function AiAnalysisContent() {
 
         <div className="panel panel-static">
           <div className="panel-header">
-            <span className="panel-title">AI analysis queue</span>
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Synced with backend</span>
+            <span className="panel-title">{t.aiAnalysis.queueTitle}</span>
+            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{t.aiAnalysis.syncedWithBackend}</span>
           </div>
           <div className="panel-body" style={{ padding: 16, display: "grid", gap: 12 }}>
             {aiAnalyses.length === 0 && (
               <div style={{ textAlign: "center", color: "var(--text-secondary)", padding: 24 }}>
-                No AI analyses available.
+                {t.aiAnalysis.noAnalyses}
               </div>
             )}
 
@@ -233,10 +232,10 @@ function AiAnalysisContent() {
                   }}
                   className="ai-metrics"
                 >
-                  <Metric label="Model confidence" value={`${a.spillProbability}%`} />
-                  <Metric label="Estimated area" value={formatAreaM2(a.estimatedAreaM2)} />
-                  <Metric label="Detection confidence" value={`${a.confidence}%`} />
-                  <Metric label="Analyzed at" value={formatDateTimeAZT(a.analyzedAt)} />
+                  <Metric label={t.aiAnalysis.modelConfidence} value={`${a.spillProbability}%`} />
+                  <Metric label={t.aiAnalysis.estimatedArea} value={formatAreaM2(a.estimatedAreaM2)} />
+                  <Metric label={t.aiAnalysis.detectionConfidence} value={`${a.confidence}%`} />
+                  <Metric label={t.aiAnalysis.analyzedAt} value={formatDateTimeAZT(a.analyzedAt)} />
                 </div>
 
                 <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>

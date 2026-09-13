@@ -7,16 +7,11 @@ import Sidebar from "@/components/Sidebar";
 import type { NavId } from "@/lib/nav";
 import { isAuthenticated, logout, refreshCurrentUser, type UserRole } from "@/lib/auth";
 import { useIncidentStore } from "@/lib/incident-store";
+import { useLanguage } from "@/lib/useLanguage";
 
 type Props = {
   active: NavId;
   children: React.ReactNode;
-};
-
-const ROLE_LABEL: Record<UserRole, string> = {
-  viewer: "Viewer",
-  operator: "Operator",
-  admin: "Admin",
 };
 
 // proxy.ts is the real gate (checks the httpOnly session cookie
@@ -29,10 +24,17 @@ const ROLE_LABEL: Record<UserRole, string> = {
 export default function AppShell({ active, children }: Props) {
   const router = useRouter();
   const { loading: incidentsLoading } = useIncidentStore();
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState("Operator");
   const [userRole, setUserRole] = useState<UserRole>("viewer");
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+  const ROLE_LABEL: Record<UserRole, string> = {
+    viewer: t.header.roleViewer,
+    operator: t.header.roleOperator,
+    admin: t.header.roleAdmin,
+  };
 
   useEffect(() => {
     if (!isAuthenticated()) {

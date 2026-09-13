@@ -1,6 +1,8 @@
 "use client";
 
 import { ActivityEntry } from "@/lib/mock-data";
+import { useLanguage } from "@/lib/useLanguage";
+import type { Translations } from "@/lib/i18n";
 import {
   Satellite,
   Brain,
@@ -18,23 +20,24 @@ type Props = {
   onEventClick?: (lat: number, lng: number) => void;
 };
 
-const META: Record<
-  ActivityEntry["type"],
-  { color: string; icon: React.ReactNode; label: string }
-> = {
-  detection: { color: "var(--color-high)", icon: <Satellite size={14} />, label: "Detection" },
-  ai_analysis: { color: "var(--accent)", icon: <Brain size={14} />, label: "AI" },
-  review: { color: "var(--color-med)", icon: <UserCheck size={14} />, label: "Review" },
-  confirmed: { color: "var(--color-med)", icon: <ShieldCheck size={14} />, label: "Confirmed" },
-  response: { color: "var(--accent)", icon: <Siren size={14} />, label: "Response" },
-  cleanup: { color: "var(--color-low)", icon: <Droplets size={14} />, label: "Cleanup" },
-  vessel: { color: "var(--accent)", icon: <Ship size={14} />, label: "Vessel" },
-  alert: { color: "var(--color-med)", icon: <AlertTriangle size={14} />, label: "Alert" },
-  dispatch: { color: "var(--text-secondary)", icon: <Siren size={14} />, label: "Dispatch" },
-  collection: { color: "var(--color-low)", icon: <Droplets size={14} />, label: "Collection" },
-  conversion: { color: "var(--accent)", icon: <ShieldCheck size={14} />, label: "Recovery" },
-  info: { color: "var(--text-tertiary)", icon: <Info size={14} />, label: "Info" },
-};
+function buildMeta(
+  t: Translations
+): Record<ActivityEntry["type"], { color: string; icon: React.ReactNode; label: string }> {
+  return {
+    detection: { color: "var(--color-high)", icon: <Satellite size={14} />, label: t.activityFeed.detection },
+    ai_analysis: { color: "var(--accent)", icon: <Brain size={14} />, label: t.activityFeed.ai },
+    review: { color: "var(--color-med)", icon: <UserCheck size={14} />, label: t.activityFeed.review },
+    confirmed: { color: "var(--color-med)", icon: <ShieldCheck size={14} />, label: t.activityFeed.confirmed },
+    response: { color: "var(--accent)", icon: <Siren size={14} />, label: t.activityFeed.response },
+    cleanup: { color: "var(--color-low)", icon: <Droplets size={14} />, label: t.activityFeed.cleanup },
+    vessel: { color: "var(--accent)", icon: <Ship size={14} />, label: t.activityFeed.vessel },
+    alert: { color: "var(--color-med)", icon: <AlertTriangle size={14} />, label: t.activityFeed.alert },
+    dispatch: { color: "var(--text-secondary)", icon: <Siren size={14} />, label: t.activityFeed.dispatch },
+    collection: { color: "var(--color-low)", icon: <Droplets size={14} />, label: t.activityFeed.collection },
+    conversion: { color: "var(--accent)", icon: <ShieldCheck size={14} />, label: t.activityFeed.recovery },
+    info: { color: "var(--text-tertiary)", icon: <Info size={14} />, label: t.activityFeed.info },
+  };
+}
 
 const PORT_COORDS: Record<string, [number, number]> = {
   baku: [40.365, 49.855],
@@ -43,18 +46,20 @@ const PORT_COORDS: Record<string, [number, number]> = {
   sangachal: [40.186, 49.492],
 };
 
-function timeAgo(ts: string) {
+function timeAgo(ts: string, t: Translations) {
   const diff = Date.now() - new Date(ts).getTime();
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
-  if (days >= 1) return `${days}d ago`;
-  if (hours >= 1) return `${hours}h ago`;
-  if (mins >= 1) return `${mins}m ago`;
-  return "just now";
+  if (days >= 1) return t.activityFeed.daysAgo(days);
+  if (hours >= 1) return t.activityFeed.hoursAgo(hours);
+  if (mins >= 1) return t.activityFeed.minsAgo(mins);
+  return t.activityFeed.justNow;
 }
 
 export default function ActivityFeed({ entries, onEventClick }: Props) {
+  const { t } = useLanguage();
+  const META = buildMeta(t);
   const sorted = [...entries].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
@@ -62,8 +67,8 @@ export default function ActivityFeed({ entries, onEventClick }: Props) {
   return (
     <div className="panel" style={{ height: "100%" }}>
       <div className="panel-header">
-        <span className="panel-title">Activity Feed</span>
-        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Live ops stream</span>
+        <span className="panel-title">{t.activityFeed.title}</span>
+        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{t.activityFeed.liveOpsStream}</span>
       </div>
 
       <div className="panel-body" style={{ padding: "8px 8px 12px" }}>
@@ -130,7 +135,7 @@ export default function ActivityFeed({ entries, onEventClick }: Props) {
                 >
                   <span style={{ color: meta.color, fontWeight: 500 }}>{meta.label}</span>
                   <span style={{ color: "var(--text-tertiary)" }}>·</span>
-                  <span>{timeAgo(entry.timestamp)}</span>
+                  <span>{timeAgo(entry.timestamp, t)}</span>
                   {entry.incidentId && (
                     <>
                       <span style={{ color: "var(--text-tertiary)" }}>·</span>
