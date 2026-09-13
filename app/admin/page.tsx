@@ -5,7 +5,7 @@ import AppShell from "@/components/AppShell";
 import PageHeader from "@/components/ui/PageHeader";
 import StatCard from "@/components/ui/StatCard";
 import { getCurrentUser, isAdmin, type UserRole } from "@/lib/auth";
-import { Users, ShieldCheck, UserCog, LogIn, MessageSquare, Search, CheckCircle2, Undo2, Reply, Send, Loader2, History } from "lucide-react";
+import { Users, ShieldCheck, UserCog, LogIn, MessageSquare, Search, CheckCircle2, Undo2, Reply, Send, Loader2, History, Trash2 } from "lucide-react";
 
 type AdminUser = {
   id: string;
@@ -161,6 +161,23 @@ function AdminContent() {
       setFeedback((prev) => prev.map((f) => (f.id === feedbackId ? updated : f)));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to send reply.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const deleteFeedbackItem = async (feedbackId: string) => {
+    if (!confirm("Delete this entry? This can't be undone.")) return;
+    setUpdatingId(feedbackId);
+    try {
+      const res = await fetch(`/api/feedback/${feedbackId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete.");
+      }
+      setFeedback((prev) => prev.filter((f) => f.id !== feedbackId));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete.");
     } finally {
       setUpdatingId(null);
     }
@@ -415,6 +432,7 @@ function AdminContent() {
                     busy={updatingId === f.id}
                     onToggleResolved={() => toggleResolved(f)}
                     onSendReply={(message) => sendReply(f.id, message)}
+                    onDelete={() => deleteFeedbackItem(f.id)}
                   />
                 ))
               )}
@@ -431,11 +449,13 @@ function FeedbackRow({
   busy,
   onToggleResolved,
   onSendReply,
+  onDelete,
 }: {
   item: FeedbackItem;
   busy: boolean;
   onToggleResolved: () => void;
   onSendReply: (message: string) => void;
+  onDelete: () => void;
 }) {
   const [replyDraft, setReplyDraft] = useState("");
   const [replying, setReplying] = useState(false);
@@ -597,6 +617,30 @@ function FeedbackRow({
           >
             {item.resolved ? <Undo2 size={13} /> : <CheckCircle2 size={13} />}
             {item.resolved ? "Reopen" : "Resolve"}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            title="Delete"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid var(--glass-border)",
+              background: "transparent",
+              color: "var(--color-high-text)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <Trash2 size={13} />
+            Delete
           </button>
         </div>
       </div>
