@@ -5,6 +5,7 @@ import { User, LogOut, Menu, CheckCircle2 } from "lucide-react";
 import { useIncidentStore } from "@/lib/incident-store";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import LanguageToggle from "@/components/ui/LanguageToggle";
+import { useLanguage } from "@/lib/useLanguage";
 
 type Props = {
   onLogout?: () => void;
@@ -61,6 +62,7 @@ export default function Header({
   userRole = "Viewer",
 }: Props) {
   const { hasLiveIncident, simulateLiveIncident, resolveLiveIncident } = useIncidentStore();
+  const { t } = useLanguage();
 
   return (
     <header
@@ -82,8 +84,8 @@ export default function Header({
         {onMenuClick && (
           <button
             type="button"
-            title="Toggle navigation"
-            aria-label="Toggle navigation"
+            title={t.header.toggleNav}
+            aria-label={t.header.toggleNav}
             onClick={onMenuClick}
             style={{
               width: 34,
@@ -134,7 +136,7 @@ export default function Header({
               letterSpacing: "0.01em",
             }}
           >
-            Satellite & AI Oil Spill Intelligence
+            {t.header.tagline}
           </span>
         </div>
       </div>
@@ -152,8 +154,8 @@ export default function Header({
           }}
           title={
             hasLiveIncident
-              ? "A live incident is active"
-              : "Simulate a live incident detection"
+              ? t.header.liveIncidentActive
+              : t.header.simulateLiveIncident
           }
           className={hasLiveIncident ? "system-status-blink" : undefined}
           style={{
@@ -188,7 +190,7 @@ export default function Header({
               color: hasLiveIncident ? "#FFFFFF" : "var(--color-low)",
             }}
           >
-            {hasLiveIncident ? "Incident Active" : "System Online"}
+            {hasLiveIncident ? t.header.incidentActive : t.header.systemOnline}
           </span>
         </button>
 
@@ -196,7 +198,7 @@ export default function Header({
           <button
             type="button"
             onClick={resolveLiveIncident}
-            title="Mark the live incident as resolved"
+            title={t.header.markResolvedTitle}
             style={{
               display: "flex",
               alignItems: "center",
@@ -215,7 +217,7 @@ export default function Header({
             }}
           >
             <CheckCircle2 size={12} />
-            Mark Resolved
+            {t.header.markResolved}
           </button>
         )}
 
@@ -252,7 +254,7 @@ export default function Header({
           {onLogout && (
             <button
               type="button"
-              title="Sign out"
+              title={t.header.signOut}
               onClick={onLogout}
               style={{
                 marginLeft: 4,

@@ -12,6 +12,7 @@ import RiskBadge from "@/components/ui/RiskBadge";
 import StatusBadge from "@/components/ui/StatusBadge";
 import IncidentDetailsPanel from "@/components/incidents/IncidentDetailsPanel";
 import { useIncidentStore } from "@/lib/incident-store";
+import { useLanguage } from "@/lib/useLanguage";
 import {
   AlertTriangle,
   ShieldAlert,
@@ -57,6 +58,7 @@ export default function IncidentsPage() {
 }
 
 function IncidentsContent() {
+  const { t } = useLanguage();
   const { incidents, stats, getIncidentById } = useIncidentStore();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
@@ -173,85 +175,85 @@ function IncidentsContent() {
     <>
       <div className="dashboard-scroll">
         <PageHeader
-          title="Incidents"
-          subtitle="Detected and monitored oil spill events across the Caspian operational area."
+          title={t.incidents.title}
+          subtitle={t.incidents.subtitle}
         />
 
         <section
           style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}
           className="incidents-stat-grid"
         >
-          <StatCard label="Active Incidents" value={stats.active} accent="var(--color-high)" icon={<AlertTriangle size={15} />} />
-          <StatCard label="High Risk" value={stats.highRisk} accent="var(--color-med)" icon={<ShieldAlert size={15} />} />
-          <StatCard label="Under Review" value={stats.underReview} accent="var(--accent)" icon={<Eye size={15} />} />
-          <StatCard label="Resolved" value={stats.resolved} accent="var(--color-low)" icon={<CheckCircle2 size={15} />} />
+          <StatCard label={t.incidents.activeIncidents} value={stats.active} accent="var(--color-high)" icon={<AlertTriangle size={15} />} />
+          <StatCard label={t.incidents.highRisk} value={stats.highRisk} accent="var(--color-med)" icon={<ShieldAlert size={15} />} />
+          <StatCard label={t.incidents.underReview} value={stats.underReview} accent="var(--accent)" icon={<Eye size={15} />} />
+          <StatCard label={t.incidents.resolved} value={stats.resolved} accent="var(--color-low)" icon={<CheckCircle2 size={15} />} />
         </section>
 
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search by incident ID or location…"
+          searchPlaceholder={t.incidents.searchPlaceholder}
           filters={[
             {
               id: "risk",
-              label: "Risk",
+              label: t.incidents.risk,
               value: riskFilter,
               onChange: setRiskFilter,
               options: [
-                { value: "all", label: "All risks" },
-                { value: "HIGH", label: "High" },
-                { value: "MEDIUM", label: "Medium" },
-                { value: "LOW", label: "Low" },
+                { value: "all", label: t.incidents.allRisks },
+                { value: "HIGH", label: t.incidents.riskHigh },
+                { value: "MEDIUM", label: t.incidents.riskMedium },
+                { value: "LOW", label: t.incidents.riskLow },
               ],
             },
             {
               id: "status",
-              label: "Status",
+              label: t.incidents.status,
               value: statusFilter,
               onChange: setStatusFilter,
               options: [
-                { value: "all", label: "All statuses" },
-                { value: "detected", label: "Detected" },
-                { value: "under_review", label: "Under Review" },
-                { value: "cleaning", label: "Cleaning" },
-                { value: "resolved", label: "Resolved" },
-                { value: "rejected", label: "Rejected" },
+                { value: "all", label: t.incidents.allStatuses },
+                { value: "detected", label: t.incidents.statusDetected },
+                { value: "under_review", label: t.incidents.statusUnderReview },
+                { value: "cleaning", label: t.incidents.statusCleaning },
+                { value: "resolved", label: t.incidents.statusResolved },
+                { value: "rejected", label: t.incidents.statusRejected },
               ],
             },
             {
               id: "location",
-              label: "Location",
+              label: t.incidents.location,
               value: locationFilter,
               onChange: setLocationFilter,
               options: [
-                { value: "all", label: "All locations" },
+                { value: "all", label: t.incidents.allLocations },
                 ...locations.map((l) => ({ value: l, label: l })),
               ],
             },
             {
               id: "date",
-              label: "Date",
+              label: t.incidents.date,
               value: dateFilter,
               onChange: (v) => setDateFilter(v as DateFilter),
               options: [
-                { value: "all", label: "All dates" },
-                { value: "today", label: "Today" },
-                { value: "7d", label: "Last 7 days" },
-                { value: "30d", label: "Last 30 days" },
+                { value: "all", label: t.incidents.allDates },
+                { value: "today", label: t.incidents.dateToday },
+                { value: "7d", label: t.incidents.dateLast7Days },
+                { value: "30d", label: t.incidents.dateLast30Days },
               ],
             },
           ]}
           trailing={
             <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-              {filtered.length} result{filtered.length === 1 ? "" : "s"}
+              {t.incidents.resultCount(filtered.length)}
             </span>
           }
         />
 
         <div className="panel panel-static" style={{ minHeight: 360 }}>
           <div className="panel-header">
-            <span className="panel-title">Incident register</span>
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Synced with backend</span>
+            <span className="panel-title">{t.incidents.incidentRegister}</span>
+            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{t.incidents.syncedWithBackend}</span>
           </div>
           <div className="panel-body" style={{ overflowX: "auto" }}>
             <div
@@ -268,25 +270,25 @@ function IncidentsContent() {
                 minWidth: 900,
               }}
             >
-              <SortHead label="ID" column="displayId" />
-              <SortHead label="Location" column="location" />
-              <SortHead label="Detection Time" column="timestamp" />
-              <SortHead label="Area" column="areaM2" />
-              <SortHead label="Risk" column="risk" />
-              <SortHead label="Status" column="status" />
-              <SortHead label="Model Conf." column="aiProbability" />
+              <SortHead label={t.incidents.colId} column="displayId" />
+              <SortHead label={t.incidents.colLocation} column="location" />
+              <SortHead label={t.incidents.colDetectionTime} column="timestamp" />
+              <SortHead label={t.incidents.colArea} column="areaM2" />
+              <SortHead label={t.incidents.colRisk} column="risk" />
+              <SortHead label={t.incidents.colStatus} column="status" />
+              <SortHead label={t.incidents.colModelConf} column="aiProbability" />
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)" }}>
-                Action
+                {t.incidents.colAction}
               </span>
             </div>
 
             {filtered.length === 0 && (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-secondary)", fontSize: 13 }}>
                 {incidents.length === 0
-                  ? "No incident data yet."
+                  ? t.incidents.noIncidentData
                   : search.trim()
-                    ? `No results for "${search.trim()}" — check the spelling or try a different search term.`
-                    : "No incidents match the selected filters."}
+                    ? t.common.noResultsFor(search.trim())
+                    : t.incidents.noIncidentsMatchFilters}
               </div>
             )}
 
@@ -351,7 +353,7 @@ function IncidentsContent() {
                     width: "fit-content",
                   }}
                 >
-                  View
+                  {t.incidents.view}
                 </button>
               </div>
             ))}

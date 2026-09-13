@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getEffectiveLanguage, translations, LANGUAGE_CHANGE_EVENT, type Language } from "./i18n";
+import { getEffectiveLanguage, translations, LANGUAGE_CHANGE_EVENT, type Language, type Translations } from "./i18n";
 
 /** Current UI language plus its translation dictionary, re-rendering when
  * the user toggles it (see LanguageToggle) or changes it in another tab. */
-export function useLanguage() {
+export function useLanguage(): { lang: Language; t: Translations } {
   const [lang, setLang] = useState<Language>("en");
 
   useEffect(() => {

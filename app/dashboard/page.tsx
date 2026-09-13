@@ -15,6 +15,7 @@ import { useSpillSourceEstimate } from "@/lib/useSpillSourceEstimate";
 import { mockData } from "@/lib/mock-data";
 import type { Incident } from "@/lib/types";
 import { getCurrentUser, canOperate } from "@/lib/auth";
+import { useLanguage } from "@/lib/useLanguage";
 import { MapPin, X } from "lucide-react";
 
 export default function DashboardPage() {
@@ -27,6 +28,7 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const router = useRouter();
+  const { t } = useLanguage();
   const { incidents, vessels, riskZones, activity, kpis, hasLiveIncident } = useIncidentStore();
   const [activeMapCoords, setActiveMapCoords] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<Incident | null>(null);
@@ -99,7 +101,7 @@ function DashboardContent() {
               }}
             >
               {placementMode ? <X size={14} /> : <MapPin size={14} />}
-              {placementMode ? "Cancel" : "Report Spill"}
+              {placementMode ? t.dashboard.cancel : t.dashboard.reportSpill}
             </button>
             )}
             <MapPanel
@@ -124,7 +126,7 @@ function DashboardContent() {
             aria-label="Live sea and wind conditions"
           >
             <div className="panel-header">
-              <span className="panel-title">Sea &amp; Weather</span>
+              <span className="panel-title">{t.dashboard.seaWeather}</span>
               <select
                 value={weatherPortId}
                 onChange={(e) => setWeatherPortId(e.target.value)}

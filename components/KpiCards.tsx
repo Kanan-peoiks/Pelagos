@@ -2,6 +2,7 @@
 
 import { DashboardKpis, formatAreaM2 } from "@/lib/mock-data";
 import { Incident } from "@/lib/types";
+import { useLanguage } from "@/lib/useLanguage";
 import {
   AlertTriangle,
   ShieldAlert,
@@ -146,6 +147,7 @@ function KpiCard({ label, value, hint, icon, accent = "var(--accent)", trend }: 
 }
 
 export default function KpiCards({ kpis, incidents }: Props) {
+  const { t } = useLanguage();
   const activeTrend = bucketByDay(
     incidents
       .filter((i) => i.status !== "resolved" && i.status !== "rejected")
@@ -176,41 +178,41 @@ export default function KpiCards({ kpis, incidents }: Props) {
       className="kpi-grid"
     >
       <KpiCard
-        label="Active Incidents"
+        label={t.kpi.activeIncidents}
         value={String(kpis.activeIncidents)}
-        hint="Open cases across Caspian ops"
+        hint={t.kpi.activeIncidentsHint}
         icon={<AlertTriangle size={15} strokeWidth={2} />}
         accent="var(--color-high)"
         trend={activeTrend}
       />
       <KpiCard
-        label="High Risk"
+        label={t.kpi.highRisk}
         value={String(kpis.highRisk)}
-        hint="Requires priority review"
+        hint={t.kpi.highRiskHint}
         icon={<ShieldAlert size={15} strokeWidth={2} />}
         accent="var(--color-med)"
         trend={highRiskTrend}
       />
       <KpiCard
-        label="Detected Area"
+        label={t.kpi.detectedArea}
         value={formatAreaM2(kpis.detectedAreaM2)}
-        hint="Active spill footprint"
+        hint={t.kpi.detectedAreaHint}
         icon={<Maximize2 size={15} strokeWidth={2} />}
         accent="var(--accent)"
         trend={detectedAreaTrend}
       />
       <KpiCard
-        label="Cleaned Area"
+        label={t.kpi.cleanedArea}
         value={formatAreaM2(kpis.cleanedAreaM2)}
-        hint="Cleaning + resolved"
+        hint={t.kpi.cleanedAreaHint}
         icon={<Droplets size={15} strokeWidth={2} />}
         accent="var(--color-low)"
         trend={cleanedAreaTrend}
       />
       <KpiCard
-        label="AI Confidence"
+        label={t.kpi.aiConfidence}
         value={`${Math.round(kpis.aiConfidence * 100)}%`}
-        hint="Avg. model probability"
+        hint={t.kpi.aiConfidenceHint}
         icon={<Brain size={15} strokeWidth={2} />}
         accent="var(--accent)"
         trend={aiConfidenceTrend}

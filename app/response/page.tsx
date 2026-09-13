@@ -8,15 +8,18 @@ import RiskBadge from "@/components/ui/RiskBadge";
 import StatusBadge from "@/components/ui/StatusBadge";
 import IncidentDetailsPanel from "@/components/incidents/IncidentDetailsPanel";
 import { useIncidentStore } from "@/lib/incident-store";
-import { formatAreaM2, formatDateTimeAZT, INCIDENT_STATUS_LABEL } from "@/lib/mock-data";
+import { formatAreaM2, formatDateTimeAZT } from "@/lib/mock-data";
 import type { IncidentStatus } from "@/lib/types";
+import { useLanguage } from "@/lib/useLanguage";
 import { Siren, Eye, Droplets, CheckCircle2 } from "lucide-react";
 
-const FLOW: { key: IncidentStatus | "rejected"; label: string }[] = [
-  { key: "detected", label: "Detection" },
-  { key: "under_review", label: "Human Decision" },
-  { key: "cleaning", label: "Cleanup" },
-  { key: "resolved", label: "Resolution" },
+type ResponseStepKey = "stepDetection" | "stepHumanDecision" | "stepCleanup" | "stepResolution";
+
+const FLOW: { key: IncidentStatus | "rejected"; labelKey: ResponseStepKey }[] = [
+  { key: "detected", labelKey: "stepDetection" },
+  { key: "under_review", labelKey: "stepHumanDecision" },
+  { key: "cleaning", labelKey: "stepCleanup" },
+  { key: "resolved", labelKey: "stepResolution" },
 ];
 
 export default function ResponsePage() {
@@ -28,6 +31,7 @@ export default function ResponsePage() {
 }
 
 function ResponseContent() {
+  const { t } = useLanguage();
   const { responseOps, stats, getIncidentById } = useIncidentStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedId ? getIncidentById(selectedId) || null : null;
@@ -49,14 +53,21 @@ function ResponseContent() {
     <>
       <div className="dashboard-scroll">
         <PageHeader
-          title="Response"
-          subtitle="Operational response workflow from detection through human decision, cleanup and resolution."
+          title={t.response.title}
+          subtitle={t.response.subtitle}
         />
 
         <div className="panel" style={{ padding: "20px 18px 16px", flexShrink: 0 }}>
-          <div className="panel-title" style={{ marginBottom: 22 }}>Response workflow</div>
+          <div className="panel-title" style={{ marginBottom: 22 }}>{t.response.workflowTitle}</div>
           <div style={{ display: "flex", alignItems: "flex-start", overflowX: "auto", paddingBottom: 2, minHeight: 72 }}>
-            {["Detection", "AI Analysis", "Human Decision", "Response", "Cleanup", "Resolution"].map(
+            {[
+              t.response.stepDetection,
+              t.response.stepAiAnalysis,
+              t.response.stepHumanDecision,
+              t.response.stepResponse,
+              t.response.stepCleanup,
+              t.response.stepResolution,
+            ].map(
               (step, i, arr) => (
                 <div
                   key={step}
@@ -112,15 +123,15 @@ function ResponseContent() {
           style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}
           className="ops-stat-grid"
         >
-          <StatCard label="Active Ops" value={stats.active} accent="var(--color-high)" icon={<Siren size={15} />} />
-          <StatCard label="Under Review" value={stats.underReview} accent="var(--accent)" icon={<Eye size={15} />} />
+          <StatCard label={t.response.activeOps} value={stats.active} accent="var(--color-high)" icon={<Siren size={15} />} />
+          <StatCard label={t.response.underReview} value={stats.underReview} accent="var(--accent)" icon={<Eye size={15} />} />
           <StatCard
-            label="Cleaning"
+            label={t.response.cleaning}
             value={grouped.cleaning.length}
             accent="var(--color-info)"
             icon={<Droplets size={15} />}
           />
-          <StatCard label="Resolved" value={stats.resolved} accent="var(--color-low)" icon={<CheckCircle2 size={15} />} />
+          <StatCard label={t.response.resolved} value={stats.resolved} accent="var(--color-low)" icon={<CheckCircle2 size={15} />} />
         </section>
 
         <div
@@ -134,7 +145,7 @@ function ResponseContent() {
           {FLOW.map((col) => (
             <div key={col.key} className="panel panel-static" style={{ minHeight: 280 }}>
               <div className="panel-header">
-                <span className="panel-title">{col.label}</span>
+                <span className="panel-title">{t.response[col.labelKey]}</span>
                 <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                   {grouped[col.key]?.length || 0}
                 </span>
@@ -142,7 +153,7 @@ function ResponseContent() {
               <div className="panel-body" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                 {(grouped[col.key] || []).length === 0 && (
                   <div style={{ fontSize: 12, color: "var(--text-tertiary)", padding: 8 }}>
-                    No incidents in this stage.
+                    {t.response.noIncidentsInStage}
                   </div>
                 )}
                 {(grouped[col.key] || []).map((op) => (
@@ -170,10 +181,10 @@ function ResponseContent() {
                       {formatAreaM2(op.areaM2)} · {op.assignedTeam}
                     </div>
                     <div style={{ marginTop: 8 }}>
-                      <StatusBadge status={op.status} label={INCIDENT_STATUS_LABEL[op.status]} />
+                      <StatusBadge status={op.status} />
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
-                      Started {formatDateTimeAZT(op.startTime)}
+                      {t.response.started(formatDateTimeAZT(op.startTime))}
                     </div>
                   </button>
                 ))}

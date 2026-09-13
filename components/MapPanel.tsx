@@ -11,6 +11,7 @@ import {
   formatAreaM2,
 } from "@/lib/mock-data";
 import { generateSlickPolygon, type SpillSourceResult } from "@/lib/spill-physics";
+import { useLanguage } from "@/lib/useLanguage";
 
 type Props = {
   incidents: Incident[];
@@ -171,6 +172,7 @@ export default function MapPanel({
   placementMode = false,
   onMapClick,
 }: Props) {
+  const { t } = useLanguage();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInst = useRef<L.Map | null>(null);
   const layersRef = useRef<(L.Marker | L.Circle | L.Polygon | L.Polyline | L.CircleMarker)[]>([]);
@@ -484,7 +486,7 @@ export default function MapPanel({
             }}
           />
           <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>
-            Oil spill
+            {t.mapPanel.oilSpill}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -499,7 +501,7 @@ export default function MapPanel({
             }}
           />
           <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>
-            Vessel
+            {t.mapPanel.vessel}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -513,7 +515,7 @@ export default function MapPanel({
             }}
           />
           <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>
-            Risk zone
+            {t.mapPanel.riskZone}
           </span>
         </div>
       </div>
@@ -542,10 +544,10 @@ export default function MapPanel({
             color: "var(--text-primary)",
           }}
         >
-          Caspian Sea Monitoring
+          {t.mapPanel.title}
         </div>
         <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
-          Sentinel-1 SAR · AI analysis · Human review
+          {t.mapPanel.subtitle}
         </div>
       </div>
 

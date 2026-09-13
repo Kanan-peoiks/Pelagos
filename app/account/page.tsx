@@ -5,17 +5,18 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PageHeader from "@/components/ui/PageHeader";
 import { getCurrentUser, logout, type AuthUser } from "@/lib/auth";
+import { useLanguage } from "@/lib/useLanguage";
 import { Shield, LogOut, User, Send, CheckCircle2, Loader2 } from "lucide-react";
-
-const ROLE_LABEL: Record<AuthUser["role"], string> = {
-  viewer: "Viewer (read-only)",
-  operator: "Operator",
-  admin: "Admin",
-};
 
 export default function AccountPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const ROLE_LABEL: Record<AuthUser["role"], string> = {
+    viewer: t.account.roleViewer,
+    operator: t.account.roleOperator,
+    admin: t.account.roleAdmin,
+  };
 
   useEffect(() => {
     setUser(getCurrentUser());
@@ -30,14 +31,14 @@ export default function AccountPage() {
     <AppShell active="account">
       <div className="dashboard-scroll">
         <PageHeader
-          title="Account"
-          subtitle="Operator profile for the SeaSentry operational workspace."
+          title={t.account.title}
+          subtitle={t.account.subtitle}
         />
 
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }} className="account-grid">
           <div className="panel panel-static">
             <div className="panel-header">
-              <span className="panel-title">Profile</span>
+              <span className="panel-title">{t.account.profile}</span>
             </div>
             <div className="panel-body" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
@@ -64,17 +65,17 @@ export default function AccountPage() {
               </div>
 
               <div style={{ display: "grid", gap: 12, fontSize: 13 }}>
-                <InfoRow label="Role" value={user ? ROLE_LABEL[user.role] : "—"} />
-                <InfoRow label="Organisation" value="SeaSentry Operations" />
-                <InfoRow label="Monitoring theatre" value="Caspian Sea · Azerbaijan" />
-                <InfoRow label="Auth mode" value="SeaSentry account session" />
+                <InfoRow label={t.account.role} value={user ? ROLE_LABEL[user.role] : "—"} />
+                <InfoRow label={t.account.organisation} value={t.account.organisationValue} />
+                <InfoRow label={t.account.monitoringTheatre} value={t.account.monitoringTheatreValue} />
+                <InfoRow label={t.account.authMode} value={t.account.authModeValue} />
               </div>
             </div>
           </div>
 
           <div className="panel panel-static">
             <div className="panel-header">
-              <span className="panel-title">Session</span>
+              <span className="panel-title">{t.account.session}</span>
             </div>
             <div className="panel-body" style={{ padding: 20, display: "grid", gap: 14 }}>
               <div
@@ -91,8 +92,7 @@ export default function AccountPage() {
                 }}
               >
                 <Shield size={16} color="var(--accent)" style={{ flexShrink: 0, marginTop: 2 }} />
-                Your session is authenticated against the SeaSentry backend and stays active
-                until you log out or it expires.
+                {t.account.sessionNote}
               </div>
 
               <button
@@ -114,7 +114,7 @@ export default function AccountPage() {
                   fontFamily: "inherit",
                 }}
               >
-                <LogOut size={15} /> Logout
+                <LogOut size={15} /> {t.account.logout}
               </button>
             </div>
           </div>
@@ -133,6 +133,7 @@ export default function AccountPage() {
 }
 
 function FeedbackPanel() {
+  const { t } = useLanguage();
   const [kind, setKind] = useState<"feedback" | "suggestion" | "question">("suggestion");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
@@ -164,7 +165,7 @@ function FeedbackPanel() {
   return (
     <div className="panel panel-static" style={{ marginTop: 16 }}>
       <div className="panel-header">
-        <span className="panel-title">Feedback, suggestion, or question</span>
+        <span className="panel-title">{t.account.feedbackTitle}</span>
       </div>
       <div className="panel-body" style={{ padding: 20 }}>
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
@@ -182,14 +183,14 @@ function FeedbackPanel() {
               width: 180,
             }}
           >
-            <option value="feedback">Feedback</option>
-            <option value="suggestion">Suggestion</option>
-            <option value="question">Question</option>
+            <option value="feedback">{t.account.kindFeedback}</option>
+            <option value="suggestion">{t.account.kindSuggestion}</option>
+            <option value="question">{t.account.kindQuestion}</option>
           </select>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Tell us what's on your mind…"
+            placeholder={t.account.messagePlaceholder}
             style={{
               padding: "9px 11px",
               borderRadius: 8,
@@ -205,7 +206,7 @@ function FeedbackPanel() {
           {error && <div className="auth-error" role="alert">{error}</div>}
           {status === "sent" && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--accent)" }}>
-              <CheckCircle2 size={14} /> Sent — thank you.
+              <CheckCircle2 size={14} /> {t.account.sentThankYou}
             </div>
           )}
           <button
@@ -228,7 +229,7 @@ function FeedbackPanel() {
             }}
           >
             {status === "sending" ? <Loader2 size={14} className="spinner" /> : <Send size={14} />}
-            Send
+            {t.account.send}
           </button>
         </form>
       </div>

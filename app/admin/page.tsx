@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import PageHeader from "@/components/ui/PageHeader";
 import StatCard from "@/components/ui/StatCard";
 import { getCurrentUser, isAdmin, type UserRole } from "@/lib/auth";
+import { useLanguage } from "@/lib/useLanguage";
 import { Users, ShieldCheck, UserCog, LogIn, MessageSquare, Search, CheckCircle2, Undo2, Reply, Send, Loader2, History, Trash2 } from "lucide-react";
 
 type AdminUser = {
@@ -56,6 +57,7 @@ export default function AdminPage() {
 }
 
 function AdminContent() {
+  const { t } = useLanguage();
   const admin = isAdmin(getCurrentUser());
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -167,7 +169,7 @@ function AdminContent() {
   };
 
   const deleteFeedbackItem = async (feedbackId: string) => {
-    if (!confirm("Delete this entry? This can't be undone.")) return;
+    if (!confirm(t.admin.deleteConfirm)) return;
     setUpdatingId(feedbackId);
     try {
       const res = await fetch(`/api/feedback/${feedbackId}`, { method: "DELETE" });
@@ -200,10 +202,10 @@ function AdminContent() {
   if (!admin) {
     return (
       <div className="dashboard-scroll">
-        <PageHeader title="Admin" subtitle="Access denied." />
+        <PageHeader title={t.admin.title} subtitle={t.admin.accessDenied} />
         <div className="panel panel-static">
           <div className="panel-body" style={{ padding: 24, fontSize: 13, color: "var(--text-secondary)" }}>
-            Your account doesn&apos;t have admin access.
+            {t.admin.accessDeniedBody}
           </div>
         </div>
       </div>
@@ -212,7 +214,7 @@ function AdminContent() {
 
   return (
     <div className="dashboard-scroll">
-      <PageHeader title="Admin" subtitle="User management and usage stats — visible to admins only." />
+      <PageHeader title={t.admin.title} subtitle={t.admin.subtitle} />
 
       {error && (
         <div className="auth-error" role="alert" style={{ marginBottom: 16 }}>
@@ -221,23 +223,23 @@ function AdminContent() {
       )}
 
       {loading ? (
-        <div style={{ padding: 24, fontSize: 13, color: "var(--text-secondary)" }}>Loading…</div>
+        <div style={{ padding: 24, fontSize: 13, color: "var(--text-secondary)" }}>{t.common.loading}</div>
       ) : (
         <>
           <section style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12 }} className="report-stat-grid">
-            <StatCard label="Total Users" value={stats?.totalUsers ?? 0} icon={<Users size={15} />} />
-            <StatCard label="Operators" value={stats?.totalOperators ?? 0} icon={<UserCog size={15} />} />
-            <StatCard label="Admins" value={stats?.totalAdmins ?? 0} icon={<ShieldCheck size={15} />} />
-            <StatCard label="Logins Today" value={stats?.loginsToday ?? 0} icon={<LogIn size={15} />} />
+            <StatCard label={t.admin.totalUsers} value={stats?.totalUsers ?? 0} icon={<Users size={15} />} />
+            <StatCard label={t.admin.operators} value={stats?.totalOperators ?? 0} icon={<UserCog size={15} />} />
+            <StatCard label={t.admin.admins} value={stats?.totalAdmins ?? 0} icon={<ShieldCheck size={15} />} />
+            <StatCard label={t.admin.loginsToday} value={stats?.loginsToday ?? 0} icon={<LogIn size={15} />} />
           </section>
 
           <div className="panel panel-static" style={{ marginTop: 16 }}>
             <div className="panel-header">
-              <span className="panel-title">Logins — last 7 days</span>
+              <span className="panel-title">{t.admin.loginsLast7Days}</span>
             </div>
             <div className="panel-body" style={{ padding: 16, display: "flex", gap: 16, flexWrap: "wrap" }}>
               {(stats?.loginsLast7Days ?? []).length === 0 ? (
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>No logins recorded yet.</span>
+                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t.admin.noLoginsRecorded}</span>
               ) : (
                 stats?.loginsLast7Days.map((d) => (
                   <div key={d.date} style={{ textAlign: "center" }}>
@@ -251,9 +253,9 @@ function AdminContent() {
 
           <div className="panel panel-static" style={{ marginTop: 16 }}>
             <div className="panel-header">
-              <span className="panel-title">Users</span>
+              <span className="panel-title">{t.admin.users}</span>
               <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                {filteredUsers.length} of {users.length}
+                {t.admin.shownOfTotal(filteredUsers.length, users.length)}
               </span>
             </div>
             <div style={{ padding: "12px 16px 0" }}>
@@ -265,7 +267,7 @@ function AdminContent() {
                 <input
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
-                  placeholder="Search by name or email…"
+                  placeholder={t.admin.searchByNameEmail}
                   style={{
                     width: "100%",
                     padding: "8px 10px 8px 32px",
@@ -283,11 +285,11 @@ function AdminContent() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--text-tertiary)", fontSize: 11 }}>
-                    <th style={{ padding: "8px 12px" }}>Name</th>
-                    <th style={{ padding: "8px 12px" }}>Email</th>
-                    <th style={{ padding: "8px 12px" }}>Role</th>
-                    <th style={{ padding: "8px 12px" }}>Joined</th>
-                    <th style={{ padding: "8px 12px" }}>Action</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colName}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colEmail}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colRole}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colJoined}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colAction}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -295,8 +297,8 @@ function AdminContent() {
                     <tr>
                       <td colSpan={5} style={{ padding: "24px 12px", textAlign: "center", color: "var(--text-secondary)" }}>
                         {users.length === 0
-                          ? "No users yet."
-                          : `No results for "${userSearch.trim()}" — check the spelling or try a different search term.`}
+                          ? t.admin.noUsersYet
+                          : t.common.noResultsFor(userSearch.trim())}
                       </td>
                     </tr>
                   )}
@@ -310,7 +312,7 @@ function AdminContent() {
                       <td style={{ padding: "10px 12px" }}>{new Date(u.createdAt).toLocaleDateString()}</td>
                       <td style={{ padding: "10px 12px" }}>
                         {u.isDemo ? (
-                          <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Fixed</span>
+                          <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{t.admin.fixed}</span>
                         ) : (
                           <select
                             value={u.role}
@@ -343,28 +345,28 @@ function AdminContent() {
             <div className="panel-header">
               <span className="panel-title">
                 <History size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
-                Audit Log
+                {t.admin.auditLog}
               </span>
               <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                Role changes · {auditLog.length} recorded
+                {t.admin.roleChangesRecorded(auditLog.length)}
               </span>
             </div>
             <div className="panel-body" style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--text-tertiary)", fontSize: 11 }}>
-                    <th style={{ padding: "8px 12px" }}>When</th>
-                    <th style={{ padding: "8px 12px" }}>Admin</th>
-                    <th style={{ padding: "8px 12px" }}>Action</th>
-                    <th style={{ padding: "8px 12px" }}>Target user</th>
-                    <th style={{ padding: "8px 12px" }}>Change</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colWhen}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colAdmin}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colActionAudit}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colTargetUser}</th>
+                    <th style={{ padding: "8px 12px" }}>{t.admin.colChange}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {auditLog.length === 0 && (
                     <tr>
                       <td colSpan={5} style={{ padding: "24px 12px", textAlign: "center", color: "var(--text-secondary)" }}>
-                        No role changes recorded yet.
+                        {t.admin.noRoleChanges}
                       </td>
                     </tr>
                   )}
@@ -392,10 +394,10 @@ function AdminContent() {
             <div className="panel-header">
               <span className="panel-title">
                 <MessageSquare size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
-                Feedback
+                {t.admin.feedback}
               </span>
               <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                {unresolvedCount} open · {feedback.length} total
+                {t.admin.openTotal(unresolvedCount, feedback.length)}
               </span>
             </div>
             <div style={{ display: "flex", gap: 6, padding: "12px 16px 0" }}>
@@ -417,13 +419,13 @@ function AdminContent() {
                     textTransform: "capitalize",
                   }}
                 >
-                  {f}
+                  {f === "open" ? t.admin.filterOpen : f === "resolved" ? t.admin.filterResolved : t.admin.filterAll}
                 </button>
               ))}
             </div>
             <div className="panel-body" style={{ display: "grid", gap: 10, padding: 16 }}>
               {filteredFeedback.length === 0 ? (
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Nothing here.</span>
+                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t.admin.nothingHere}</span>
               ) : (
                 filteredFeedback.map((f) => (
                   <FeedbackRow
@@ -457,6 +459,7 @@ function FeedbackRow({
   onSendReply: (message: string) => void;
   onDelete: () => void;
 }) {
+  const { t } = useLanguage();
   const [replyDraft, setReplyDraft] = useState("");
   const [replying, setReplying] = useState(false);
 
@@ -480,7 +483,9 @@ function FeedbackRow({
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, gap: 8 }}>
-            <span style={{ fontWeight: 650, textTransform: "capitalize" }}>{item.kind}</span>
+            <span style={{ fontWeight: 650, textTransform: "capitalize" }}>
+              {item.kind === "feedback" ? t.account.kindFeedback : item.kind === "suggestion" ? t.account.kindSuggestion : t.account.kindQuestion}
+            </span>
             <span style={{ color: "var(--text-tertiary)", whiteSpace: "nowrap" }}>
               {item.userName} · {new Date(item.createdAt).toLocaleString()}
             </span>
@@ -499,7 +504,7 @@ function FeedbackRow({
               }}
             >
               <div style={{ color: "var(--text-tertiary)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
-                Your reply{item.repliedAt ? ` · ${new Date(item.repliedAt).toLocaleString()}` : ""}
+                {t.admin.yourReply}{item.repliedAt ? ` · ${new Date(item.repliedAt).toLocaleString()}` : ""}
               </div>
               {item.adminReply}
             </div>
@@ -511,7 +516,7 @@ function FeedbackRow({
                 autoFocus
                 value={replyDraft}
                 onChange={(e) => setReplyDraft(e.target.value)}
-                placeholder="Write a reply — it will be emailed to the user…"
+                placeholder={t.admin.replyPlaceholder}
                 style={{
                   padding: "8px 10px",
                   borderRadius: 8,
@@ -545,7 +550,7 @@ function FeedbackRow({
                   }}
                 >
                   {busy ? <Loader2 size={13} className="spinner" /> : <Send size={13} />}
-                  Send reply
+                  {t.admin.sendReply}
                 </button>
                 <button
                   type="button"
@@ -561,7 +566,7 @@ function FeedbackRow({
                     fontFamily: "inherit",
                   }}
                 >
-                  Cancel
+                  {t.admin.cancel}
                 </button>
               </div>
             </div>
@@ -573,7 +578,7 @@ function FeedbackRow({
             <button
               type="button"
               onClick={() => setReplying(true)}
-              title="Reply by email"
+              title={t.admin.replyByEmail}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -591,14 +596,14 @@ function FeedbackRow({
               }}
             >
               <Reply size={13} />
-              Reply
+              {t.admin.reply}
             </button>
           )}
           <button
             type="button"
             onClick={onToggleResolved}
             disabled={busy}
-            title={item.resolved ? "Reopen" : "Mark resolved"}
+            title={item.resolved ? t.admin.reopen : t.admin.markResolved}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -616,13 +621,13 @@ function FeedbackRow({
             }}
           >
             {item.resolved ? <Undo2 size={13} /> : <CheckCircle2 size={13} />}
-            {item.resolved ? "Reopen" : "Resolve"}
+            {item.resolved ? t.admin.reopen : t.admin.markResolved}
           </button>
           <button
             type="button"
             onClick={onDelete}
             disabled={busy}
-            title="Delete"
+            title={t.admin.delete}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -640,7 +645,7 @@ function FeedbackRow({
             }}
           >
             <Trash2 size={13} />
-            Delete
+            {t.admin.delete}
           </button>
         </div>
       </div>
