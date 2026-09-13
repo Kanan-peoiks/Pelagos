@@ -13,22 +13,24 @@ import {
 } from "lucide-react";
 import { ENABLED_NAV, NAV_ROUTES, type NavId } from "@/lib/nav";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { useLanguage } from "@/lib/useLanguage";
+import type { Translations } from "@/lib/i18n";
 
 type NavItem = {
   id: NavId;
-  label: string;
+  labelKey: keyof Translations["sidebar"];
   icon: React.ReactNode;
 };
 
 const NAV: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} strokeWidth={1.75} /> },
-  { id: "incidents", label: "Incidents", icon: <AlertTriangle size={18} strokeWidth={1.75} /> },
-  { id: "vessels", label: "Vessels", icon: <Ship size={18} strokeWidth={1.75} /> },
-  { id: "ai", label: "AI Analysis", icon: <Brain size={18} strokeWidth={1.75} /> },
-  { id: "response", label: "Response", icon: <Siren size={18} strokeWidth={1.75} /> },
-  { id: "reports", label: "Reports", icon: <FileBarChart size={18} strokeWidth={1.75} /> },
-  { id: "account", label: "Account", icon: <UserCircle size={18} strokeWidth={1.75} /> },
-  { id: "admin", label: "Admin", icon: <ShieldCheck size={18} strokeWidth={1.75} /> },
+  { id: "dashboard", labelKey: "dashboard", icon: <LayoutDashboard size={18} strokeWidth={1.75} /> },
+  { id: "incidents", labelKey: "incidents", icon: <AlertTriangle size={18} strokeWidth={1.75} /> },
+  { id: "vessels", labelKey: "vessels", icon: <Ship size={18} strokeWidth={1.75} /> },
+  { id: "ai", labelKey: "ai", icon: <Brain size={18} strokeWidth={1.75} /> },
+  { id: "response", labelKey: "response", icon: <Siren size={18} strokeWidth={1.75} /> },
+  { id: "reports", labelKey: "reports", icon: <FileBarChart size={18} strokeWidth={1.75} /> },
+  { id: "account", labelKey: "account", icon: <UserCircle size={18} strokeWidth={1.75} /> },
+  { id: "admin", labelKey: "admin", icon: <ShieldCheck size={18} strokeWidth={1.75} /> },
 ];
 
 const COLLAPSED_WIDTH = 64;
@@ -42,6 +44,7 @@ type Props = {
 export default function Sidebar({ active = "dashboard", expanded }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   return (
     <aside
@@ -71,7 +74,7 @@ export default function Sidebar({ active = "dashboard", expanded }: Props) {
           transition: "opacity 0.15s ease",
         }}
       >
-        Navigation
+        {t.sidebar.navigation}
       </div>
 
       {NAV.filter((item) => item.id !== "admin" || isAdmin(getCurrentUser())).map((item) => {
@@ -80,12 +83,13 @@ export default function Sidebar({ active = "dashboard", expanded }: Props) {
         const isActive =
           active === item.id ||
           (enabled && (pathname === href || pathname.startsWith(`${href}/`)));
+        const label = t.sidebar[item.labelKey];
 
         return (
           <button
             key={item.id}
             type="button"
-            title={item.label}
+            title={label}
             aria-current={isActive ? "page" : undefined}
             disabled={!enabled}
             onClick={() => {
@@ -127,7 +131,7 @@ export default function Sidebar({ active = "dashboard", expanded }: Props) {
               {item.icon}
             </span>
             {expanded && (
-              <span style={{ whiteSpace: "nowrap" }}>{item.label}</span>
+              <span style={{ whiteSpace: "nowrap" }}>{label}</span>
             )}
           </button>
         );
@@ -154,13 +158,13 @@ export default function Sidebar({ active = "dashboard", expanded }: Props) {
               marginBottom: "6px",
             }}
           >
-            Monitoring
+            {t.sidebar.monitoring}
           </div>
           <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.45 }}>
-            Caspian Sea · Azerbaijan coastal corridor
+            {t.sidebar.monitoringDesc}
           </div>
           <div style={{ fontSize: "10px", color: "var(--text-tertiary)", marginTop: 8 }}>
-            Demo data · not live feeds
+            {t.sidebar.demoDataNote}
           </div>
         </div>
       )}

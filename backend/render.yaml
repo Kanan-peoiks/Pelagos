@@ -43,3 +43,8 @@ services:
         # Once SMTP is restored/replaced, flip this to "true" (env var only,
         # no redeploy of code needed) to turn the built 2FA flow back on.
         value: "false"
+      - key: SLACK_WEBHOOK_URL
+        # Blank = Slack alerts on new HIGH-risk incidents are skipped. Set
+        # this in the Render dashboard once a workspace webhook exists
+        # (never in this file — treated as a secret via sync: false).
+        sync: false

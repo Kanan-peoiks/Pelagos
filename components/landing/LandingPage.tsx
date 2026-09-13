@@ -14,39 +14,21 @@ import {
 } from "lucide-react";
 import { loginAsDemo } from "@/lib/auth";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import LanguageToggle from "@/components/ui/LanguageToggle";
+import { useLanguage } from "@/lib/useLanguage";
 
-const FEATURES = [
-  {
-    icon: Satellite,
-    title: "Satellite detection",
-    body: "Sentinel-1 SAR passes flag dark-signature slicks across the Caspian operational corridor.",
-  },
-  {
-    icon: Brain,
-    title: "AI analysis",
-    body: "Confidence scoring, drift forecasting, and source-attribution hypotheses generated automatically.",
-  },
-  {
-    icon: UserCheck,
-    title: "Human review",
-    body: "Every detection is confirmed, rejected, or escalated by a duty specialist — never by the AI alone.",
-  },
-  {
-    icon: Droplets,
-    title: "Response & cleanup",
-    body: "Sorbent, boom, and vessel requirements are calculated from real spill physics, not guesswork.",
-  },
+const FEATURE_ICONS = [
+  { key: "satellite" as const, icon: Satellite },
+  { key: "ai" as const, icon: Brain },
+  { key: "human" as const, icon: UserCheck },
+  { key: "response" as const, icon: Droplets },
 ];
 
-const STEPS = [
-  { n: "01", title: "Detect", body: "Satellite imagery is scanned for anomalies consistent with an oil slick." },
-  { n: "02", title: "Analyze", body: "The model estimates area, risk, and probable cause with a confidence score." },
-  { n: "03", title: "Decide", body: "A specialist confirms, rejects, or escalates the detection." },
-  { n: "04", title: "Respond", body: "Cleanup materials and cost are calculated and tracked to resolution." },
-];
+const STEP_KEYS = ["detect", "analyze", "decide", "respond"] as const;
 
 export default function LandingPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
 
@@ -75,40 +57,36 @@ export default function LandingPage() {
           </Link>
           <nav className="landing-nav">
             <ThemeToggle size={36} />
+            <LanguageToggle size={36} />
             <a
               href="https://seasentryinfo.vercel.app"
               target="_blank"
               rel="noreferrer"
               className="landing-btn landing-btn-ghost"
             >
-              About
+              {t.nav.about}
             </a>
             <Link href="/login" className="landing-btn landing-btn-ghost">
-              Login
+              {t.nav.login}
             </Link>
             <Link href="/register" className="landing-btn landing-btn-primary">
-              Register
+              {t.nav.register}
             </Link>
           </nav>
         </div>
       </header>
 
       <section className="landing-hero">
-        <div className="landing-eyebrow">Caspian Sea · Azerbaijan</div>
-        <h1 className="landing-headline">
-          Oil spill intelligence, from satellite detection to human decision.
-        </h1>
-        <p className="landing-support">
-          SeaSentry detects potential oil spills on the Caspian Sea using satellite SAR imagery, analyzes
-          them with AI, and supports human review, response, and cleanup — in one operational workspace.
-        </p>
+        <div className="landing-eyebrow">{t.landing.eyebrow}</div>
+        <h1 className="landing-headline">{t.landing.headline}</h1>
+        <p className="landing-support">{t.landing.support}</p>
 
         <div className="landing-cta-row">
           <Link href="/register" className="landing-btn landing-btn-primary landing-btn-lg">
-            Get started <ArrowRight size={16} />
+            {t.landing.getStarted} <ArrowRight size={16} />
           </Link>
           <Link href="/login" className="landing-btn landing-btn-ghost landing-btn-lg">
-            Login
+            {t.nav.login}
           </Link>
           <button
             type="button"
@@ -117,33 +95,28 @@ export default function LandingPage() {
             className="landing-btn landing-btn-demo landing-btn-lg"
           >
             {demoLoading ? <Loader2 size={16} className="spinner" /> : <Play size={16} fill="currentColor" />}
-            Continue as guest
+            {t.landing.continueAsGuest}
           </button>
         </div>
         {demoError && (
           <p style={{ color: "var(--color-high-text)", fontSize: 13, margin: "0 0 12px" }}>{demoError}</p>
         )}
 
-        <p className="landing-hitl-note">
-          AI provides detection and analysis. Final operational decisions — confirming a spill, approving a
-          response — are always made by a human specialist.
-        </p>
+        <p className="landing-hitl-note">{t.landing.hitlNote}</p>
       </section>
 
       <section className="landing-section landing-section-alt">
         <div className="landing-section-inner">
-          <h2 className="landing-section-title">What the platform does</h2>
-          <p className="landing-section-sub">
-            A single workspace covering the full lifecycle of a spill event.
-          </p>
+          <h2 className="landing-section-title">{t.landing.whatItDoesTitle}</h2>
+          <p className="landing-section-sub">{t.landing.whatItDoesSub}</p>
           <div className="landing-feature-grid">
-            {FEATURES.map(({ icon: Icon, title, body }) => (
-              <div className="landing-feature" key={title}>
+            {FEATURE_ICONS.map(({ key, icon: Icon }) => (
+              <div className="landing-feature" key={key}>
                 <div className="landing-feature-icon">
                   <Icon size={18} />
                 </div>
-                <h3>{title}</h3>
-                <p>{body}</p>
+                <h3>{t.landing.features[key].title}</h3>
+                <p>{t.landing.features[key].body}</p>
               </div>
             ))}
           </div>
@@ -152,14 +125,14 @@ export default function LandingPage() {
 
       <section className="landing-section">
         <div className="landing-section-inner">
-          <h2 className="landing-section-title">How it works</h2>
-          <p className="landing-section-sub">From first signal to closed incident.</p>
+          <h2 className="landing-section-title">{t.landing.howItWorksTitle}</h2>
+          <p className="landing-section-sub">{t.landing.howItWorksSub}</p>
           <div className="landing-steps">
-            {STEPS.map((s) => (
-              <div key={s.n}>
-                <div className="landing-step-n">{s.n}</div>
-                <h3>{s.title}</h3>
-                <p>{s.body}</p>
+            {STEP_KEYS.map((key, idx) => (
+              <div key={key}>
+                <div className="landing-step-n">{String(idx + 1).padStart(2, "0")}</div>
+                <h3>{t.landing.steps[key].title}</h3>
+                <p>{t.landing.steps[key].body}</p>
               </div>
             ))}
           </div>
@@ -168,8 +141,8 @@ export default function LandingPage() {
 
       <section className="landing-bottom-cta">
         <div className="landing-bottom-inner">
-          <h2>Ready to see it in action?</h2>
-          <p>No setup required — try the operational dashboard with the guest account.</p>
+          <h2>{t.landing.bottomCtaTitle}</h2>
+          <p>{t.landing.bottomCtaSub}</p>
           <button
             type="button"
             onClick={handleDemo}
@@ -177,7 +150,7 @@ export default function LandingPage() {
             className="landing-btn landing-btn-demo landing-btn-lg"
           >
             {demoLoading ? <Loader2 size={16} className="spinner" /> : <Play size={16} fill="currentColor" />}
-            Continue as guest
+            {t.landing.continueAsGuest}
           </button>
         </div>
       </section>
@@ -188,14 +161,14 @@ export default function LandingPage() {
             <div className="landing-brand-name" style={{ fontSize: 13 }}>
               SEASENTRY
             </div>
-            <div className="landing-footer-meta">Caspian Sea oil-spill intelligence platform.</div>
+            <div className="landing-footer-meta">{t.landing.footerTag}</div>
           </div>
           <div className="landing-footer-links">
             <a href="https://seasentryinfo.vercel.app" target="_blank" rel="noreferrer">
-              About
+              {t.nav.about}
             </a>
-            <Link href="/login">Login</Link>
-            <Link href="/register">Register</Link>
+            <Link href="/login">{t.nav.login}</Link>
+            <Link href="/register">{t.nav.register}</Link>
           </div>
         </div>
       </footer>

@@ -70,6 +70,7 @@ export default function RecentIncidents({ incidents }: Props) {
               gridTemplateColumns: "70px 1.3fr 70px 90px 80px 1fr",
               padding: "12px 16px",
               alignItems: "center",
+              background: i % 2 === 1 ? "var(--surface-muted)" : "transparent",
               borderBottom:
                 i < sorted.length - 1 ? "1px solid var(--border-muted)" : "none",
               borderRadius: 0,

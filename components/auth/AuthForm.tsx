@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
 import { login, register, verifyTwoFactor } from "@/lib/auth";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import LanguageToggle from "@/components/ui/LanguageToggle";
+import { useLanguage } from "@/lib/useLanguage";
 
 type Mode = "login" | "register";
 
@@ -17,6 +19,7 @@ export default function AuthForm({ mode }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") || "/dashboard";
+  const { t } = useLanguage();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -95,28 +98,29 @@ export default function AuthForm({ mode }: Props) {
               }}
               style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
             >
-              <ArrowLeft size={14} /> Back
+              <ArrowLeft size={14} /> {t.auth.back}
             </button>
-            <ThemeToggle />
+            <div style={{ display: "flex", gap: 8 }}>
+              <ThemeToggle />
+              <LanguageToggle />
+            </div>
           </div>
 
           <div className="auth-card">
             <div className="auth-card-brand">
               <ShieldCheck size={36} color="var(--accent)" />
               <div>
-                <div className="auth-card-title">Verify it&apos;s you</div>
-                <div className="auth-card-sub">Admin accounts require a login code</div>
+                <div className="auth-card-title">{t.auth.verifyTitle}</div>
+                <div className="auth-card-sub">{t.auth.verifySub}</div>
               </div>
             </div>
 
-            <h1 className="auth-heading">Enter your code</h1>
-            <p className="auth-lede">
-              We emailed a 6-digit code to {email}. It expires in 10 minutes.
-            </p>
+            <h1 className="auth-heading">{t.auth.enterCode}</h1>
+            <p className="auth-lede">{t.auth.codeSentTo(email)}</p>
 
             <form onSubmit={handleVerifyCode} className="auth-form" noValidate>
               <div className="auth-field">
-                <label htmlFor="code">Login code</label>
+                <label htmlFor="code">{t.auth.loginCode}</label>
                 <input
                   id="code"
                   className="auth-input"
@@ -135,7 +139,7 @@ export default function AuthForm({ mode }: Props) {
               {error && <div className="auth-error" role="alert">{error}</div>}
 
               <button type="submit" className="auth-button" disabled={loading || code.length !== 6}>
-                {loading ? <Loader2 size={18} className="spinner" /> : <>Verify <ArrowRight size={16} /></>}
+                {loading ? <Loader2 size={18} className="spinner" /> : <>{t.auth.verify} <ArrowRight size={16} /></>}
               </button>
             </form>
           </div>
@@ -151,9 +155,12 @@ export default function AuthForm({ mode }: Props) {
       <div className="auth-page-shell">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" className="auth-back">
-            <ArrowLeft size={14} /> Back to home
+            <ArrowLeft size={14} /> {t.auth.backToHome}
           </Link>
-          <ThemeToggle />
+          <div style={{ display: "flex", gap: 8 }}>
+            <ThemeToggle />
+            <LanguageToggle />
+          </div>
         </div>
 
         <div className="auth-card">
@@ -166,18 +173,16 @@ export default function AuthForm({ mode }: Props) {
           </div>
 
           <h1 className="auth-heading">
-            {mode === "login" ? "Sign in" : "Create your account"}
+            {mode === "login" ? t.auth.signIn : t.auth.createAccount}
           </h1>
           <p className="auth-lede">
-            {mode === "login"
-              ? "Access the Caspian Sea operations workspace."
-              : "Register to enter the SeaSentry operational platform."}
+            {mode === "login" ? t.auth.signInSub : t.auth.registerSub}
           </p>
 
           <form onSubmit={handleSubmit} className="auth-form" noValidate>
             {mode === "register" && (
               <div className="auth-field">
-                <label htmlFor="fullName">Full name</label>
+                <label htmlFor="fullName">{t.auth.fullName}</label>
                 <input
                   id="fullName"
                   className="auth-input"
@@ -185,13 +190,13 @@ export default function AuthForm({ mode }: Props) {
                   autoComplete="name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Operator name"
+                  placeholder={t.auth.fullNamePlaceholder}
                 />
               </div>
             )}
 
             <div className="auth-field">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t.auth.email}</label>
               <input
                 id="email"
                 className="auth-input"
@@ -204,7 +209,7 @@ export default function AuthForm({ mode }: Props) {
             </div>
 
             <div className="auth-field">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">{t.auth.password}</label>
               <input
                 id="password"
                 className="auth-input"
@@ -212,13 +217,13 @@ export default function AuthForm({ mode }: Props) {
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
+                placeholder={t.auth.passwordPlaceholder}
               />
             </div>
 
             {mode === "register" && (
               <div className="auth-field">
-                <label htmlFor="confirmPassword">Confirm password</label>
+                <label htmlFor="confirmPassword">{t.auth.confirmPassword}</label>
                 <input
                   id="confirmPassword"
                   className="auth-input"
@@ -226,7 +231,7 @@ export default function AuthForm({ mode }: Props) {
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
+                  placeholder={t.auth.confirmPasswordPlaceholder}
                 />
               </div>
             )}
@@ -239,10 +244,10 @@ export default function AuthForm({ mode }: Props) {
                     checked={remember}
                     onChange={(e) => setRemember(e.target.checked)}
                   />
-                  Remember me
+                  {t.auth.rememberMe}
                 </label>
                 <Link href="/forgot-password" style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                  Forgot password?
+                  {t.auth.forgotPassword}
                 </Link>
               </div>
             )}
@@ -254,11 +259,11 @@ export default function AuthForm({ mode }: Props) {
                 <Loader2 size={18} className="spinner" />
               ) : mode === "login" ? (
                 <>
-                  Login <ArrowRight size={16} />
+                  {t.auth.login} <ArrowRight size={16} />
                 </>
               ) : (
                 <>
-                  Register <ArrowRight size={16} />
+                  {t.auth.register} <ArrowRight size={16} />
                 </>
               )}
             </button>
@@ -267,20 +272,16 @@ export default function AuthForm({ mode }: Props) {
           <p className="auth-switch">
             {mode === "login" ? (
               <>
-                Don&apos;t have an account?{" "}
-                <Link href="/register">Register</Link>
+                {t.auth.noAccount} <Link href="/register">{t.auth.register}</Link>
               </>
             ) : (
               <>
-                Already have an account? <Link href="/login">Login</Link>
+                {t.auth.haveAccount} <Link href="/login">{t.auth.login}</Link>
               </>
             )}
           </p>
 
-          <p className="auth-disclaimer">
-            Operational demo environment — use a real password, but avoid reusing one from
-            another account.
-          </p>
+          <p className="auth-disclaimer">{t.auth.disclaimer}</p>
         </div>
       </div>
     </div>

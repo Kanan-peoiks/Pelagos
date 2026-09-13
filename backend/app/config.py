@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # Used to build the link inside the reset-password email.
     frontend_url: str = "http://localhost:3000"
 
+    # Slack "Incoming Webhook" URL for high-risk incident alerts (see
+    # slack_util.py). Left blank, alerts are silently skipped — safe default
+    # until a workspace webhook is configured.
+    slack_webhook_url: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property

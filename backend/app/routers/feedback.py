@@ -69,6 +69,20 @@ def resolve_feedback(
     return feedback
 
 
+@router.delete("/{feedback_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_feedback(
+    feedback_id: str,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(require_admin),
+):
+    feedback = db.get(models.Feedback, feedback_id)
+    if feedback is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
+
+    db.delete(feedback)
+    db.commit()
+
+
 @router.post("/{feedback_id}/reply", response_model=schemas.FeedbackOut)
 def reply_to_feedback(
     feedback_id: str,

@@ -228,6 +228,24 @@ class AdminStatsOut(CamelModel):
     logins_last_7_days: list[LoginsByDay]
 
 
+class AiAccuracyOut(CamelModel):
+    """Track record of the AI's detections vs. human review outcomes, scoped
+    to the current calendar year — see routers/incidents.py's ai_accuracy().
+    `confirmed` counts both "confirmed_spill" and "response_approved" (an
+    incident can only reach cleaning after being confirmed, but overwrites
+    human_decision along the way, so both states mean "AI was right")."""
+
+    year: int
+    total_incidents: int
+    reviewed: int
+    confirmed: int
+    false_positive: int
+    still_under_review: int
+    accuracy_pct: Optional[float] = None
+    avg_confidence_confirmed: Optional[float] = None
+    avg_confidence_false_positive: Optional[float] = None
+
+
 class AuditLogOut(CamelModel):
     id: str
     actor_name: str

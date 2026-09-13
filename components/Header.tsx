@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { User, LogOut, Menu, CheckCircle2 } from "lucide-react";
 import { useIncidentStore } from "@/lib/incident-store";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import LanguageToggle from "@/components/ui/LanguageToggle";
 
 type Props = {
   onLogout?: () => void;
@@ -142,6 +143,7 @@ export default function Header({
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
         <LiveClock />
         <ThemeToggle />
+        <LanguageToggle />
 
         <button
           type="button"
