@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useLanguage } from "@/lib/useLanguage";
 
 type Props = {
   open: boolean;
@@ -25,6 +26,7 @@ export default function DetailPanel({
   width = 440,
   variant = "side",
 }: Props) {
+  const { t } = useLanguage();
   const centered = variant === "center";
   const full = variant === "full";
 
@@ -66,7 +68,7 @@ export default function DetailPanel({
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close details"
+        aria-label={t.common.close}
         style={{
           width: 32,
           height: 32,

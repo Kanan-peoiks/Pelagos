@@ -8,6 +8,7 @@
 
 import type { Incident } from "@/lib/types";
 import type { WindContext, SeaState } from "@/lib/weather";
+import type { Translations } from "@/lib/i18n";
 
 export function hashString(s: string): number {
   let h = 0;
@@ -294,11 +295,11 @@ export function deriveProjectionSeries(incident: Incident): ProjectionPoint[] {
 export type CompanyShare = { name: string; pct: number };
 
 /** Fixed, per spec: unconfirmed attribution split shown as a pie chart. */
-export function deriveSourceAttribution(): CompanyShare[] {
+export function deriveSourceAttribution(t: Translations): CompanyShare[] {
   return [
     { name: "SOCAR", pct: 85 },
     { name: "BP", pct: 10 },
-    { name: "Others", pct: 5 },
+    { name: t.charts.sourceOthers, pct: 5 },
   ];
 }
 
@@ -306,22 +307,23 @@ export type ResponseOption = { name: string; hours: number; costUsd: number };
 
 export function deriveResponseOptions(
   incident: Incident,
-  materials: ResponseMaterials
+  materials: ResponseMaterials,
+  t: Translations
 ): ResponseOption[] {
   const seed = hashString(incident.id + "-options");
   return [
     {
-      name: "Minimal (boom only)",
+      name: t.charts.optionMinimal,
       hours: materials.durationHours + 6 + (seed % 4),
       costUsd: Math.round(materials.estimatedCostUsd * 0.55),
     },
     {
-      name: "Standard (boom + skimmer)",
+      name: t.charts.optionStandard,
       hours: materials.durationHours,
       costUsd: materials.estimatedCostUsd,
     },
     {
-      name: "Rapid (multi-vessel)",
+      name: t.charts.optionRapid,
       hours: Math.max(1, materials.durationHours - 3),
       costUsd: Math.round(materials.estimatedCostUsd * 1.6),
     },
@@ -338,7 +340,8 @@ export type MethodComparison = {
 /** AI-assisted vs. traditional (manual patrol/reporting) response. */
 export function deriveMethodComparison(
   incident: Incident,
-  materials: ResponseMaterials
+  materials: ResponseMaterials,
+  t: Translations
 ): MethodComparison[] {
   const seed = hashString(incident.id + "-method");
   const seaSentryDetectHours = 1 + (seed % 3);
@@ -348,13 +351,13 @@ export function deriveMethodComparison(
 
   return [
     {
-      metric: "Detection-to-response time",
+      metric: t.charts.metricDetectionToResponse,
       seaSentry: seaSentryDetectHours,
       traditional: traditionalDetectHours,
       unit: "h",
     },
     {
-      metric: "Total response cost",
+      metric: t.charts.metricTotalCost,
       seaSentry: materials.estimatedCostUsd,
       traditional: traditionalCost,
       unit: "$",

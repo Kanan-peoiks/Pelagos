@@ -35,6 +35,8 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import DetailPanel from "@/components/ui/DetailPanel";
 import { useIncidentStore } from "@/lib/incident-store";
 import { getCurrentUser, canOperate } from "@/lib/auth";
+import { useLanguage } from "@/lib/useLanguage";
+import type { Translations } from "@/lib/i18n";
 import {
   Satellite,
   Ship,
@@ -59,7 +61,7 @@ import {
 
 /** Deterministic mock confidence sub-scores + processing pipeline, shown only
  * in the expanded full-page view. */
-function deriveAiDeepDive(incident: Incident) {
+function deriveAiDeepDive(incident: Incident, t: Translations) {
   const seed = hashString(incident.id + "-deep");
   const texture = 72 + (seed % 24);
   const edge = 68 + ((seed >> 3) % 28);
@@ -67,12 +69,12 @@ function deriveAiDeepDive(incident: Incident) {
   return {
     confidence: { texture, edge, spectral },
     pipeline: [
-      { step: "SAR preprocessing & calibration", ms: 800 + (seed % 400) },
-      { step: "Speckle filtering", ms: 400 + (seed % 200) },
-      { step: "Dark-spot anomaly detection", ms: 1200 + (seed % 600) },
-      { step: "Shape & texture classification", ms: 900 + (seed % 500) },
-      { step: "Environmental cross-reference", ms: 500 + (seed % 300) },
-      { step: "Confidence scoring & packaging", ms: 300 + (seed % 150) },
+      { step: t.incidentDetail.pipelineSarPreprocessing, ms: 800 + (seed % 400) },
+      { step: t.incidentDetail.pipelineSpeckleFiltering, ms: 400 + (seed % 200) },
+      { step: t.incidentDetail.pipelineDarkSpotDetection, ms: 1200 + (seed % 600) },
+      { step: t.incidentDetail.pipelineShapeClassification, ms: 900 + (seed % 500) },
+      { step: t.incidentDetail.pipelineEnvironmentalCrossRef, ms: 500 + (seed % 300) },
+      { step: t.incidentDetail.pipelineConfidenceScoring, ms: 300 + (seed % 150) },
     ],
   };
 }
@@ -202,9 +204,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function FreshnessNote({ staleMinutes }: { staleMinutes: number }) {
+  const { t } = useLanguage();
   return (
     <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 2 }}>
-      Open-Meteo · {staleMinutes}m stale
+      {t.incidentDetail.openMeteoStale(staleMinutes)}
     </div>
   );
 }
@@ -350,6 +353,7 @@ const actionBtnStyle = (variant: "primary" | "danger" | "neutral" | "warn"): Rea
 
 export default function IncidentDetailsPanel({ incident, onClose, expanded, context = "incident" }: Props) {
   const router = useRouter();
+  const { t } = useLanguage();
   const { incidents: allIncidents, applyHumanAction, getIncidentById } = useIncidentStore();
   const live = incident ? getIncidentById(incident.id) || incident : null;
   const vessel = getVesselById(live?.relatedVesselId);
@@ -386,7 +390,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
   return (
     <DetailPanel
       open={!!live}
-      title={live ? `Incident ${live.displayId}` : ""}
+      title={live ? t.incidentDetail.incidentNumber(live.displayId) : ""}
       subtitle={live?.title || live?.location}
       onClose={onClose}
       width={expanded ? "min(1100px, 96vw)" : 480}
@@ -396,73 +400,73 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
         (() => {
           const impact = deriveAiImpact(live, wind);
           const materials = deriveResponseMaterials(live, impact.volumeBbl);
-          const deep = deriveAiDeepDive(live);
+          const deep = deriveAiDeepDive(live, t);
           const similar = findSimilarIncidents(live, allIncidents);
 
           return (
             <>
-              <Section title="Incident information">
+              <Section title={t.incidentDetail.incidentInformation}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                  <Field label="Incident ID">
+                  <Field label={t.incidentDetail.incidentId}>
                     <span style={{ fontFamily: "ui-monospace, monospace", color: "var(--accent)" }}>
                       {live.displayId}
                     </span>
                   </Field>
-                  <Field label="Detection source">{live.detectionSource}</Field>
-                  <Field label="Location">{live.location}</Field>
-                  <Field label="Detection time">
+                  <Field label={t.incidentDetail.detectionSource}>{live.detectionSource}</Field>
+                  <Field label={t.incidentDetail.location}>{live.location}</Field>
+                  <Field label={t.incidentDetail.detectionTime}>
                     {formatDateTimeAZT(live.timestamp)} AZT
                   </Field>
-                  <Field label="Coordinates">
+                  <Field label={t.incidentDetail.coordinates}>
                     <span style={{ fontVariantNumeric: "tabular-nums", fontFamily: "ui-monospace, monospace" }}>
                       {live.lat.toFixed(4)}°N, {live.lng.toFixed(4)}°E
                     </span>
                   </Field>
-                  <Field label="Estimated area">{formatAreaM2(live.areaM2)}</Field>
-                  <Field label="Risk">
+                  <Field label={t.incidentDetail.estimatedArea}>{formatAreaM2(live.areaM2)}</Field>
+                  <Field label={t.incidentDetail.risk}>
                     <RiskBadge risk={live.risk} />
                   </Field>
-                  <Field label="Status">
+                  <Field label={t.incidentDetail.status}>
                     <StatusBadge status={live.status} />
                   </Field>
-                  <Field label="Model confidence">
+                  <Field label={t.incidentDetail.modelConfidence}>
                     <span style={{ color: "var(--accent)", fontWeight: 600 }}>
                       {Math.round(live.aiProbability * 100)}%
                     </span>
                     <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
-                      (not a pollution probability)
+                      {t.incidentDetail.notPollutionProb}
                     </span>
                   </Field>
-                  <Field label="Review status">{live.reviewStatus}</Field>
+                  <Field label={t.incidentDetail.reviewStatus}>{live.reviewStatus}</Field>
                 </div>
               </Section>
 
-              <Section title="Satellite analysis" icon={<Satellite size={14} />}>
+              <Section title={t.incidentDetail.satelliteAnalysis} icon={<Satellite size={14} />}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <ImagePlaceholder
-                    title="Original SAR"
-                    subtitle="Placeholder — Sentinel-1 feed not connected"
+                    title={t.incidentDetail.originalSar}
+                    subtitle={t.incidentDetail.originalSarSub}
                     accent="rgba(129,178,154,0.08)"
                   />
                   <ImagePlaceholder
-                    title="AI overlay"
-                    subtitle="Detected boundary placeholder"
+                    title={t.incidentDetail.aiOverlay}
+                    subtitle={t.incidentDetail.aiOverlaySub}
                     accent="rgba(224,122,95,0.1)"
                     onClick={() => router.push(`/ai-analysis?open=${live.id}&wide=1`)}
                   />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-                  <Field label="Detected area">{formatAreaM2(live.areaM2)}</Field>
-                  <Field label="Model confidence">
+                  <Field label={t.incidentDetail.detectedArea}>{formatAreaM2(live.areaM2)}</Field>
+                  <Field label={t.incidentDetail.modelConfidence}>
                     {Math.round(live.aiProbability * 100)}%
                     <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
-                      (not a pollution probability)
+                      {t.incidentDetail.notPollutionProb}
                     </span>
                   </Field>
                 </div>
               </Section>
 
-              <Section title="AI analysis" icon={<Brain size={14} />}>
+              <Section title={t.incidentDetail.aiAnalysis} icon={<Brain size={14} />}>
                 <p style={{ margin: 0, fontSize: 13, color: "var(--text-primary)", lineHeight: 1.55 }}>
                   {live.aiSummary}
                 </p>
@@ -488,22 +492,22 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                     }}
                   >
                     <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                      Full breakdown available — confidence scoring, drift forecast, processing pipeline.
+                      {t.incidentDetail.fullBreakdownAvailable}
                     </span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--color-high-text)", whiteSpace: "nowrap" }}>
-                      Open full analysis →
+                      {t.incidentDetail.openFullAnalysis}
                     </span>
                   </button>
                 ) : (
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
-                      <Field label="Estimated volume">~{impact.volumeBbl} bbl</Field>
-                      <Field label="Model version">{impact.modelVersion}</Field>
-                      <Field label="24h drift forecast">
-                        {impact.driftKm24h} km toward {impact.driftCompass} ({impact.driftHeading}°)
+                      <Field label={t.incidentDetail.estimatedVolume}>~{impact.volumeBbl} bbl</Field>
+                      <Field label={t.incidentDetail.modelVersion}>{impact.modelVersion}</Field>
+                      <Field label={t.incidentDetail.driftForecast24h}>
+                        {t.incidentDetail.driftToward(impact.driftKm24h, impact.driftCompass, impact.driftHeading)}
                         {wind && (
                           <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
-                            — from live wind
+                            {t.incidentDetail.fromLiveWind}
                           </span>
                         )}
                       </Field>
@@ -511,7 +515,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
 
                     <div style={{ marginTop: 20 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 10 }}>
-                        Detection confidence breakdown
+                        {t.incidentDetail.detectionConfidenceBreakdown}
                       </div>
                       <ConfidenceGauges
                         texture={deep.confidence.texture}
@@ -522,34 +526,34 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
 
                     <div style={{ marginTop: 20 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                        <TrendingUp size={12} /> Spill growth & response projection
+                        <TrendingUp size={12} /> {t.incidentDetail.spillGrowthProjection}
                       </div>
                       <SpillProjectionChart series={deriveProjectionSeries(live)} />
                       <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>
-                        Modeled from observed growth rate — illustrative, not a guaranteed forecast.
+                        {t.incidentDetail.modeledFromGrowthRate}
                       </div>
                     </div>
 
                     <div style={{ marginTop: 20 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                        <PieChartIcon size={12} /> Spill source attribution
+                        <PieChartIcon size={12} /> {t.incidentDetail.spillSourceAttribution}
                       </div>
-                      <SourceAttributionPie data={deriveSourceAttribution()} />
+                      <SourceAttributionPie data={deriveSourceAttribution(t)} />
                       <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
-                        Unconfirmed attribution — pending investigation.
+                        {t.incidentDetail.unconfirmedAttribution}
                       </div>
                     </div>
 
                     <div style={{ marginTop: 20 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                        AI-recommended response options
+                        {t.incidentDetail.aiRecommendedOptions}
                       </div>
-                      <ResponseOptionsBar data={deriveResponseOptions(live, materials)} />
+                      <ResponseOptionsBar data={deriveResponseOptions(live, materials, t)} />
                     </div>
 
                     <div style={{ marginTop: 20 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                        Processing pipeline
+                        {t.incidentDetail.processingPipeline}
                       </div>
                       <div style={{ display: "grid", gap: 6 }}>
                         {deep.pipeline.map((step) => (
@@ -569,13 +573,13 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                     {similar.length > 0 && (
                       <div style={{ marginTop: 20 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                          <History size={12} /> Similar historical incidents
+                          <History size={12} /> {t.incidentDetail.similarHistoricalIncidents}
                         </div>
                         <div style={{ display: "grid", gap: 6 }}>
                           {similar.map((s) => (
                             <div key={s.displayId} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-secondary)" }}>
                               <span>{s.displayId} · {s.location}</span>
-                              <span style={{ fontWeight: 600, color: "var(--accent)" }}>{s.similarity}% similar</span>
+                              <span style={{ fontWeight: 600, color: "var(--accent)" }}>{t.incidentDetail.similarPct(s.similarity)}</span>
                             </div>
                           ))}
                         </div>
@@ -585,15 +589,15 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                 )}
 
                 <div style={{ marginTop: 14 }}>
-                  <Field label="Estimated cause">
+                  <Field label={t.incidentDetail.estimatedCause}>
                     <div style={{ marginTop: 8 }}>{live.estimatedCause}</div>
                   </Field>
                 </div>
-                <Field label="Unconfirmed source hypothesis">
+                <Field label={t.incidentDetail.unconfirmedSourceHypothesis}>
                   <div style={{ marginTop: 8 }}>
                     {live.spillSource}
                     <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 6 }}>
-                      — unconfirmed, pending human review
+                      {t.incidentDetail.unconfirmedPendingReview}
                     </span>
                   </div>
                 </Field>
@@ -609,38 +613,37 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                     lineHeight: 1.45,
                   }}
                 >
-                  <strong style={{ color: "var(--color-med-text)" }}>Human review required.</strong>
+                  <strong style={{ color: "var(--color-med-text)" }}>{t.incidentDetail.humanReviewRequired}</strong>
                   <br />
-                  AI provides analysis and recommendations. Final operational decisions are made by
-                  human experts.
+                  {t.incidentDetail.humanReviewRequiredBody}
                 </div>
               </Section>
 
               {context === "ai" && (
-                <Section title="Spill source & drift analysis" icon={<Crosshair size={14} />}>
+                <Section title={t.incidentDetail.spillSourceDriftAnalysis} icon={<Crosshair size={14} />}>
                   {weatherLoading && !sourceEstimate ? (
                     <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                      Reconstructing drift path from live wind data…
+                      {t.incidentDetail.reconstructingDrift}
                     </div>
                   ) : sourceEstimate?.available ? (
                     <>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Field label="Estimated rupture coordinates">
+                        <Field label={t.incidentDetail.estimatedRuptureCoords}>
                           <span style={{ fontVariantNumeric: "tabular-nums", fontFamily: "ui-monospace, monospace" }}>
                             {sourceEstimate.lat.toFixed(4)}°N, {sourceEstimate.lng.toFixed(4)}°E
                           </span>
                         </Field>
-                        <Field label="Confidence">
+                        <Field label={t.incidentDetail.confidence}>
                           <span style={{ color: "var(--accent)", fontWeight: 600 }}>{sourceEstimate.confidencePct}%</span>
                         </Field>
-                        <Field label="Distance drifted">
-                          {sourceEstimate.distanceKm} km over {sourceEstimate.hoursElapsed}h
+                        <Field label={t.incidentDetail.distanceDrifted}>
+                          {t.incidentDetail.distanceOverHours(sourceEstimate.distanceKm, sourceEstimate.hoursElapsed)}
                         </Field>
-                        <Field label="Drift speed">
-                          {sourceEstimate.driftSpeedKmh} km/h toward {compassLabel(sourceEstimate.downwindBearingDeg)}
+                        <Field label={t.incidentDetail.driftSpeed}>
+                          {t.incidentDetail.driftSpeedToward(sourceEstimate.driftSpeedKmh, compassLabel(sourceEstimate.downwindBearingDeg))}
                         </Field>
-                        <Field label="Estimated leak rate">~{sourceEstimate.leakRateBbl} bbl/h</Field>
-                        <Field label="Estimated depth">~{sourceEstimate.depthM} m</Field>
+                        <Field label={t.incidentDetail.estimatedLeakRate}>~{sourceEstimate.leakRateBbl} bbl/h</Field>
+                        <Field label={t.incidentDetail.estimatedDepth}>~{sourceEstimate.depthM} m</Field>
                       </div>
                       <div
                         style={{
@@ -654,70 +657,65 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                           lineHeight: 1.5,
                         }}
                       >
-                        Reverse-calculated by traveling {sourceEstimate.bearingCompass} ({sourceEstimate.bearingDeg}°) —
-                        upwind, opposite the slick&apos;s drift direction — using the standard ~3%-of-wind-speed drift
-                        rule from oil-spill trajectory modelling, over the time elapsed since detection. Marked
-                        &ldquo;✕&rdquo; on the dashboard map. A simplification: real models also factor in ocean
-                        current, which no free live data source provides here.
+                        {t.incidentDetail.reverseCalculatedNote(sourceEstimate.bearingCompass, sourceEstimate.bearingDeg)}
                       </div>
                     </>
                   ) : sourceEstimate?.reason === "too-stale" ? (
                     <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
-                      {sourceEstimate.hoursElapsed}h have elapsed since detection — a slick has typically
-                      weathered and dispersed too much by this point for a reliable source back-calculation.
+                      {t.incidentDetail.tooStaleNote(sourceEstimate.hoursElapsed ?? 0)}
                     </div>
                   ) : (
                     <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                      Live wind data unavailable — cannot back-calculate a source estimate.
+                      {t.incidentDetail.windDataUnavailable}
                     </div>
                   )}
                 </Section>
               )}
 
               {vessel && (
-                <Section title="Related vessel" icon={<Ship size={14} />}>
+                <Section title={t.incidentDetail.relatedVessel} icon={<Ship size={14} />}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <Field label="Name">{vessel.name}</Field>
-                    <Field label="Type">{vessel.type}</Field>
-                    <Field label="Status">{vessel.status}</Field>
-                    <Field label="Speed">{vessel.speedKnots.toFixed(1)} kn</Field>
+                    <Field label={t.incidentDetail.name}>{vessel.name}</Field>
+                    <Field label={t.incidentDetail.type}>{vessel.type}</Field>
+                    <Field label={t.incidentDetail.status}>{vessel.status}</Field>
+                    <Field label={t.incidentDetail.speed}>{vessel.speedKnots.toFixed(1)} kn</Field>
                   </div>
                 </Section>
               )}
 
-              <Section title="Environmental context" icon={<CloudSun size={14} />}>
+              <Section title={t.incidentDetail.environmentalContext} icon={<CloudSun size={14} />}>
                 {weatherLoading && !wind && !sea ? (
                   <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                    Loading live weather…
+                    {t.incidentDetail.loadingLiveWeather}
                   </div>
                 ) : wind || sea ? (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     {wind && (
-                      <Field label="Wind">
+                      <Field label={t.incidentDetail.wind}>
                         {wind.windSpeedKnots} kn · {wind.windHeading}°
                         <FreshnessNote staleMinutes={wind.staleMinutes} />
                       </Field>
                     )}
                     {sea && (
-                      <Field label="Sea state">
+                      <Field label={t.incidentDetail.seaState}>
                         {sea.seaState}
                         <FreshnessNote staleMinutes={sea.staleMinutes} />
                       </Field>
                     )}
                     {wind && (
-                      <Field label="Visibility">
+                      <Field label={t.incidentDetail.visibility}>
                         {wind.visibilityKm} km
                         <FreshnessNote staleMinutes={wind.staleMinutes} />
                       </Field>
                     )}
                     {sea && (
-                      <Field label="Wave height">
+                      <Field label={t.incidentDetail.waveHeight}>
                         {sea.waveHeightM} m · {sea.wavePeriodS}s period
                         <FreshnessNote staleMinutes={sea.staleMinutes} />
                       </Field>
                     )}
                     {wind && (
-                      <Field label="Temperature">
+                      <Field label={t.incidentDetail.temperature}>
                         {wind.temperatureC}°C
                         <FreshnessNote staleMinutes={wind.staleMinutes} />
                       </Field>
@@ -725,13 +723,13 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                   </div>
                 ) : (
                   <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                    Live weather unavailable
+                    {t.incidentDetail.liveWeatherUnavailable}
                   </div>
                 )}
               </Section>
 
-              <Section title="Response status">
-                <Field label="Current status">{live.responseStatus}</Field>
+              <Section title={t.incidentDetail.responseStatusTitle}>
+                <Field label={t.incidentDetail.currentStatus}>{live.responseStatus}</Field>
               </Section>
 
               {/* Human-in-the-loop decision — deliberately styled to stand out,
@@ -763,10 +761,10 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.03em", color: "var(--text-primary)" }}>
-                      Human-in-the-Loop Decision
+                      {t.incidentDetail.humanInTheLoopDecision}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-                      The final operational call — always made by a person, never the AI.
+                      {t.incidentDetail.finalOperationalCall}
                     </div>
                   </div>
                   {pending && (
@@ -783,20 +781,20 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                         padding: "4px 9px",
                       }}
                     >
-                      Awaiting
+                      {t.incidentDetail.awaiting}
                     </span>
                   )}
                 </div>
 
                 <div style={{ display: "grid", gap: 10 }}>
-                  <Field label="Decision">
-                    {HUMAN_DECISION_LABEL[live.humanDecision] ?? live.humanDecision}
+                  <Field label={t.incidentDetail.decision}>
+                    {t.incidentDetail.humanDecision[live.humanDecision as keyof typeof t.incidentDetail.humanDecision] ?? HUMAN_DECISION_LABEL[live.humanDecision] ?? live.humanDecision}
                   </Field>
-                  {live.humanDecisionBy && <Field label="Specialist">{live.humanDecisionBy}</Field>}
+                  {live.humanDecisionBy && <Field label={t.incidentDetail.specialist}>{live.humanDecisionBy}</Field>}
                   {live.humanDecisionAt && (
-                    <Field label="Decided at">{formatDateTimeAZT(live.humanDecisionAt)} AZT</Field>
+                    <Field label={t.incidentDetail.decidedAt}>{formatDateTimeAZT(live.humanDecisionAt)} AZT</Field>
                   )}
-                  {live.humanDecisionNote && <Field label="Notes">{live.humanDecisionNote}</Field>}
+                  {live.humanDecisionNote && <Field label={t.incidentDetail.notes}>{live.humanDecisionNote}</Field>}
                 </div>
 
                 {!canAct && (
@@ -811,23 +809,23 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                       border: "1px solid var(--glass-border)",
                     }}
                   >
-                    View-only access — an operator or admin account is required to make a decision here.
+                    {t.incidentDetail.viewOnlyAccess}
                   </div>
                 )}
 
                 {canAct && pending && (
                   <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <button type="button" style={actionBtnStyle("primary")} onClick={() => run("confirm")}>
-                      <CheckCircle2 size={13} /> Confirm Incident
+                      <CheckCircle2 size={13} /> {t.incidentDetail.confirmIncident}
                     </button>
                     <button type="button" style={actionBtnStyle("danger")} onClick={() => run("reject")}>
-                      <XCircle size={13} /> Reject Incident
+                      <XCircle size={13} /> {t.incidentDetail.rejectIncident}
                     </button>
                     <button type="button" style={actionBtnStyle("warn")} onClick={() => run("escalate")}>
-                      <AlertTriangle size={13} /> Escalate
+                      <AlertTriangle size={13} /> {t.incidentDetail.escalateAction}
                     </button>
                     <button type="button" style={actionBtnStyle("neutral")} onClick={() => run("mark_cleaning")}>
-                      <Droplets size={13} /> Mark for Cleaning
+                      <Droplets size={13} /> {t.incidentDetail.markForCleaning}
                     </button>
                   </div>
                 )}
@@ -835,66 +833,65 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                 {canAct && !pending && live.status !== "resolved" && live.status !== "rejected" && live.status !== "cleaning" && (
                   <div style={{ marginTop: 12 }}>
                     <button type="button" style={actionBtnStyle("neutral")} onClick={() => run("mark_cleaning")}>
-                      <Droplets size={13} /> Mark Cleaning Started
+                      <Droplets size={13} /> {t.incidentDetail.markCleaningStarted}
                     </button>
                   </div>
                 )}
               </div>
 
               {context === "ai" && !pending && live.status !== "rejected" && (
-                <Section title="AI-assisted vs. traditional response" icon={<Scale size={14} />}>
-                  <MethodComparisonBar data={deriveMethodComparison(live, materials)} />
+                <Section title={t.incidentDetail.aiVsTraditional} icon={<Scale size={14} />}>
+                  <MethodComparisonBar data={deriveMethodComparison(live, materials, t)} />
                   <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>
-                    Traditional response assumes manual patrol/reporting detection; slower detection means a
-                    larger spread by the time cleanup starts, raising material needs and cost.
+                    {t.incidentDetail.traditionalNote}
                   </div>
                 </Section>
               )}
 
               {!pending && live.status !== "rejected" && (
-                <Section title="Response report" icon={<ListChecks size={14} />}>
+                <Section title={t.incidentDetail.responseReport} icon={<ListChecks size={14} />}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
-                    <Field label="Incident">
+                    <Field label={t.incidentDetail.incidentLabel}>
                       {live.displayId} · {live.location}
                     </Field>
-                    <Field label="Affected area">{formatAreaM2(live.areaM2)}</Field>
-                    <Field label="Report prepared by">{live.humanDecisionBy || "Auto-generated"}</Field>
-                    <Field label="Report date">{formatDateTimeAZT(new Date().toISOString())} AZT</Field>
+                    <Field label={t.incidentDetail.affectedArea}>{formatAreaM2(live.areaM2)}</Field>
+                    <Field label={t.incidentDetail.reportPreparedBy}>{live.humanDecisionBy || t.incidentDetail.autoGenerated}</Field>
+                    <Field label={t.incidentDetail.reportDate}>{formatDateTimeAZT(new Date().toISOString())} AZT</Field>
                   </div>
 
                   <div style={{ marginTop: 16 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                      Equipment & crew
+                      {t.incidentDetail.equipmentCrew}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <Field label="Boom deployed">{materials.boomMeters} m</Field>
-                      <Field label="Sorbent required">
+                      <Field label={t.incidentDetail.boomDeployed}>{materials.boomMeters} m</Field>
+                      <Field label={t.incidentDetail.sorbentRequired}>
                         {materials.sorbentKg} kg
                         <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
-                          (1g sorbent ≈ {SORBENT_RATIO_G}g oil, 25–30g range, from ~{materials.oilMassKg}kg oil)
+                          {t.incidentDetail.sorbentRatioNote(SORBENT_RATIO_G, materials.oilMassKg)}
                         </span>
                       </Field>
-                      <Field label="Skimmer units">{materials.skimmerUnits}</Field>
-                      <Field label="Support vessels">
+                      <Field label={t.incidentDetail.skimmerUnits}>{materials.skimmerUnits}</Field>
+                      <Field label={t.incidentDetail.supportVessels}>
                         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <Anchor size={12} /> {materials.vesselCount}
                         </span>
                       </Field>
-                      <Field label="Team assigned">{materials.team}</Field>
-                      <Field label="Estimated duration">{materials.durationHours} h</Field>
+                      <Field label={t.incidentDetail.teamAssigned}>{materials.team}</Field>
+                      <Field label={t.incidentDetail.estimatedDuration}>{materials.durationHours} h</Field>
                     </div>
                   </div>
 
                   <div style={{ marginTop: 16 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                      Response phases
+                      {t.incidentDetail.responsePhases}
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
                       {[
-                        { phase: "Mobilization", done: true },
-                        { phase: "Containment", done: true },
-                        { phase: "Recovery", done: live.status === "resolved" || live.status === "cleaning" },
-                        { phase: "Site restoration & sign-off", done: live.status === "resolved" },
+                        { phase: t.incidentDetail.phaseMobilization, done: true },
+                        { phase: t.incidentDetail.phaseContainment, done: true },
+                        { phase: t.incidentDetail.phaseRecovery, done: live.status === "resolved" || live.status === "cleaning" },
+                        { phase: t.incidentDetail.phaseSiteRestoration, done: live.status === "resolved" },
                       ].map((p) => (
                         <div key={p.phase} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
                           {p.done ? (
@@ -912,7 +909,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
 
                   <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: "var(--surface-muted)" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
-                      <DollarSign size={13} /> Estimated response cost
+                      <DollarSign size={13} /> {t.incidentDetail.estimatedResponseCost}
                     </span>
                     <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
                       ${materials.estimatedCostUsd.toLocaleString("en-US")}
@@ -933,14 +930,14 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                       {pdfState === "generating" && <Loader2 size={13} className="spinner" />}
                       {pdfState === "ready" && <CheckCircle2 size={13} />}
                       {pdfState === "idle" && <FileDown size={13} />}
-                      {pdfState === "idle" && "Generate PDF Report"}
-                      {pdfState === "generating" && "Generating…"}
-                      {pdfState === "ready" && "Downloaded — Generate Again"}
+                      {pdfState === "idle" && t.incidentDetail.generatePdfReport}
+                      {pdfState === "generating" && t.incidentDetail.generatingLabel}
+                      {pdfState === "ready" && t.incidentDetail.downloadedGenerateAgain}
                     </button>
                   )}
                   {pdfState === "ready" && (
                     <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 6, textAlign: "center" }}>
-                      A real PDF was saved to your downloads.
+                      {t.incidentDetail.pdfSavedNote}
                     </div>
                   )}
                 </Section>
