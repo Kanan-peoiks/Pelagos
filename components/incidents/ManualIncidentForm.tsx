@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import type { Incident, SpillSource } from "@/lib/types";
 import { useIncidentStore, type ManualIncidentInput } from "@/lib/incident-store";
+import { useLanguage } from "@/lib/useLanguage";
 
 const RISK_OPTIONS: Incident["risk"][] = ["LOW", "MEDIUM", "HIGH"];
 const SPILL_SOURCE_OPTIONS: SpillSource[] = [
@@ -42,6 +43,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Props) {
+  const { t } = useLanguage();
   const { createIncident } = useIncidentStore();
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -56,7 +58,7 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !location.trim() || !areaM2 || Number(areaM2) <= 0) {
-      setError("Title, location and a positive area are required.");
+      setError(t.manualIncidentForm.requiredFieldsError);
       return;
     }
     setError(null);
@@ -108,37 +110,37 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
           zIndex: 1101,
         }}
       >
-        <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>Report a new incident</h2>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>{t.manualIncidentForm.title}</h2>
         <p style={{ margin: "0 0 18px", color: "var(--text-secondary)", fontSize: 12.5 }}>
-          Coordinates: {lat.toFixed(4)}°N, {lng.toFixed(4)}°E — captured from your map click.
+          {t.manualIncidentForm.coordinatesCaptured(lat.toFixed(4), lng.toFixed(4))}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 14 }}>
           <div>
-            <label style={labelStyle} htmlFor="mi-title">Title</label>
+            <label style={labelStyle} htmlFor="mi-title">{t.manualIncidentForm.incidentTitle}</label>
             <input
               id="mi-title"
               style={fieldStyle}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Sheen observed near loading berth"
+              placeholder={t.manualIncidentForm.titlePlaceholder}
             />
           </div>
 
           <div>
-            <label style={labelStyle} htmlFor="mi-location">Location name</label>
+            <label style={labelStyle} htmlFor="mi-location">{t.manualIncidentForm.locationName}</label>
             <input
               id="mi-location"
               style={fieldStyle}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Baku Port"
+              placeholder={t.manualIncidentForm.locationPlaceholder}
             />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
-              <label style={labelStyle} htmlFor="mi-area">Estimated area (m²)</label>
+              <label style={labelStyle} htmlFor="mi-area">{t.manualIncidentForm.estimatedAreaM2}</label>
               <input
                 id="mi-area"
                 type="number"
@@ -146,11 +148,11 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
                 style={fieldStyle}
                 value={areaM2}
                 onChange={(e) => setAreaM2(e.target.value)}
-                placeholder="e.g. 300"
+                placeholder={t.manualIncidentForm.areaPlaceholder}
               />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="mi-risk">Risk</label>
+              <label style={labelStyle} htmlFor="mi-risk">{t.manualIncidentForm.risk}</label>
               <select
                 id="mi-risk"
                 style={fieldStyle}
@@ -158,14 +160,14 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
                 onChange={(e) => setRisk(e.target.value as Incident["risk"])}
               >
                 {RISK_OPTIONS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
+                  <option key={r} value={r}>{t.risk[r]}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div>
-            <label style={labelStyle} htmlFor="mi-source">Suspected source</label>
+            <label style={labelStyle} htmlFor="mi-source">{t.manualIncidentForm.suspectedSource}</label>
             <select
               id="mi-source"
               style={fieldStyle}
@@ -179,24 +181,24 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
           </div>
 
           <div>
-            <label style={labelStyle} htmlFor="mi-cause">Estimated cause (optional)</label>
+            <label style={labelStyle} htmlFor="mi-cause">{t.manualIncidentForm.estimatedCauseOptional}</label>
             <input
               id="mi-cause"
               style={fieldStyle}
               value={estimatedCause}
               onChange={(e) => setEstimatedCause(e.target.value)}
-              placeholder="e.g. Possible transfer-line leak"
+              placeholder={t.manualIncidentForm.causePlaceholder}
             />
           </div>
 
           <div>
-            <label style={labelStyle} htmlFor="mi-notes">Notes (optional)</label>
+            <label style={labelStyle} htmlFor="mi-notes">{t.manualIncidentForm.notesOptional}</label>
             <textarea
               id="mi-notes"
               style={{ ...fieldStyle, resize: "vertical", minHeight: 60 }}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Anything else worth recording for review"
+              placeholder={t.manualIncidentForm.notesPlaceholder}
             />
           </div>
 
@@ -218,7 +220,7 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
                 fontFamily: "inherit",
               }}
             >
-              Cancel
+              {t.manualIncidentForm.cancel}
             </button>
             <button
               type="submit"
@@ -239,7 +241,7 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
                 fontFamily: "inherit",
               }}
             >
-              {submitting ? <Loader2 size={16} className="spinner" /> : "Create incident"}
+              {submitting ? <Loader2 size={16} className="spinner" /> : t.manualIncidentForm.createIncident}
             </button>
           </div>
         </form>

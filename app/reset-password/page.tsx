@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { validatePassword } from "@/lib/auth";
+import { useLanguage } from "@/lib/useLanguage";
 
 function ResetPasswordForm() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -20,7 +22,7 @@ function ResetPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
-      setError("This reset link is missing its token.");
+      setError(t.auth.missingTokenError);
       return;
     }
     const passwordError = validatePassword(password);
@@ -29,7 +31,7 @@ function ResetPasswordForm() {
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t.auth.passwordsDoNotMatch);
       return;
     }
 
@@ -43,12 +45,12 @@ function ResetPasswordForm() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "This reset link is invalid or has expired.");
+        throw new Error(data?.error || t.auth.resetLinkInvalidError);
       }
       setDone(true);
       setTimeout(() => router.push("/login"), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : t.auth.somethingWentWrong);
     } finally {
       setLoading(false);
     }
@@ -59,7 +61,7 @@ function ResetPasswordForm() {
       <div className="auth-page-bg" aria-hidden />
       <div className="auth-page-shell">
         <Link href="/login" className="auth-back">
-          <ArrowLeft size={14} /> Back to login
+          <ArrowLeft size={14} /> {t.auth.backToLogin}
         </Link>
 
         <div className="auth-card">
@@ -71,17 +73,17 @@ function ResetPasswordForm() {
             </div>
           </div>
 
-          <h1 className="auth-heading">Choose a new password</h1>
+          <h1 className="auth-heading">{t.auth.chooseNewPassword}</h1>
 
           {done ? (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "var(--accent)", padding: "12px 0" }}>
               <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>Password updated — redirecting you to login…</span>
+              <span>{t.auth.passwordUpdatedRedirecting}</span>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="auth-form" noValidate>
               <div className="auth-field">
-                <label htmlFor="password">New password</label>
+                <label htmlFor="password">{t.auth.newPassword}</label>
                 <input
                   id="password"
                   className="auth-input"
@@ -89,11 +91,11 @@ function ResetPasswordForm() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder={t.auth.passwordPlaceholder}
                 />
               </div>
               <div className="auth-field">
-                <label htmlFor="confirmPassword">Confirm new password</label>
+                <label htmlFor="confirmPassword">{t.auth.confirmNewPassword}</label>
                 <input
                   id="confirmPassword"
                   className="auth-input"
@@ -101,7 +103,7 @@ function ResetPasswordForm() {
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
+                  placeholder={t.auth.confirmPasswordPlaceholder}
                 />
               </div>
 
@@ -110,7 +112,7 @@ function ResetPasswordForm() {
               <button type="submit" className="auth-button" disabled={loading}>
                 {loading ? <Loader2 size={18} className="spinner" /> : (
                   <>
-                    Update password <ArrowRight size={16} />
+                    {t.auth.updatePassword} <ArrowRight size={16} />
                   </>
                 )}
               </button>

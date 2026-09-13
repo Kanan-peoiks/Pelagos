@@ -5,13 +5,13 @@ import type L from "leaflet";
 import {
   CASPIAN_OVERVIEW,
   Incident,
-  INCIDENT_STATUS_LABEL,
   RiskZone,
   Vessel,
   formatAreaM2,
 } from "@/lib/mock-data";
 import { generateSlickPolygon, type SpillSourceResult } from "@/lib/spill-physics";
 import { useLanguage } from "@/lib/useLanguage";
+import type { Translations } from "@/lib/i18n";
 
 type Props = {
   incidents: Incident[];
@@ -121,14 +121,14 @@ function createSourceIcon(L: typeof import("leaflet")) {
 // light OpenStreetMap tiles — so this template uses fixed dark-on-light
 // colors, never the --text-* theme variables, which would turn near-white
 // in dark mode and vanish on this card.
-function makeIncidentPopup(inc: Incident) {
+function makeIncidentPopup(inc: Incident, t: Translations) {
   const pct = Math.round(inc.aiProbability * 100);
   const risk = riskColor(inc.risk);
   return `
     <div style="padding:16px;font-family:'IBM Plex Sans',sans-serif;min-width:240px;">
       <div style="margin-bottom:4px;">
         <div style="font-size:13px;font-weight:700;color:#2B2D42;letter-spacing:0.04em;">
-          INCIDENT ${inc.displayId}
+          ${t.mapPanel.popupIncident} ${inc.displayId}
         </div>
         <div style="font-size:12px;color:#6C757D;margin-top:3px;">${inc.location}</div>
       </div>
@@ -137,24 +137,24 @@ function makeIncidentPopup(inc: Incident) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Area</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">${t.mapPanel.popupArea}</div>
           <div style="font-size:15px;font-weight:600;color:#2B2D42;font-variant-numeric:tabular-nums;">${formatAreaM2(inc.areaM2)}</div>
         </div>
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Model Confidence</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">${t.mapPanel.popupModelConfidence}</div>
           <div style="font-size:15px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;">${pct}%</div>
         </div>
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Risk</div>
-          <div style="font-size:13px;font-weight:700;color:${risk};letter-spacing:0.05em;">${inc.risk}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">${t.mapPanel.popupRisk}</div>
+          <div style="font-size:13px;font-weight:700;color:${risk};letter-spacing:0.05em;">${t.risk[inc.risk]}</div>
         </div>
         <div>
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">Status</div>
-          <div style="font-size:13px;font-weight:600;color:#2B2D42;">${INCIDENT_STATUS_LABEL[inc.status].toUpperCase()}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#6C757D;margin-bottom:4px;">${t.mapPanel.popupStatus}</div>
+          <div style="font-size:13px;font-weight:600;color:#2B2D42;">${t.status[inc.status].toUpperCase()}</div>
         </div>
       </div>
 
-      <button type="button" class="popup-view-btn">View Incident</button>
+      <button type="button" class="popup-view-btn">${t.mapPanel.popupViewIncident}</button>
     </div>
   `;
 }
@@ -270,7 +270,7 @@ export default function MapPanel({
           ),
           zIndexOffset: 600,
         });
-        const popup = L.popup({ maxWidth: 300, minWidth: 250 }).setContent(makeIncidentPopup(inc));
+        const popup = L.popup({ maxWidth: 300, minWidth: 250 }).setContent(makeIncidentPopup(inc, t));
         marker.bindPopup(popup);
         marker.on("popupopen", () => {
           const btn = document.querySelector(".popup-view-btn") as HTMLButtonElement | null;
@@ -376,7 +376,7 @@ export default function MapPanel({
       driftAnimRef.current.forEach((h) => cancelAnimationFrame(h.id));
       driftAnimRef.current = [];
     };
-  }, [incidents, vessels, riskZones, loaded, liveIncidentId, focusedIncidentId, sourceEstimates]);
+  }, [incidents, vessels, riskZones, loaded, liveIncidentId, focusedIncidentId, sourceEstimates, t]);
 
   useEffect(() => {
     if (activeMapCoords && mapInst.current && loaded) {
