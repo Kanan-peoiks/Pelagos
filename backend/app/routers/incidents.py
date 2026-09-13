@@ -1,10 +1,12 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.deps import get_db, require_operator
+from app.deps import get_current_user, get_db, require_operator
+from app.slack_util import send_slack_incident_alert
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
@@ -33,6 +35,49 @@ def _find_incident(db: Session, incident_id: str) -> models.Incident:
 def list_incidents(db: Session = Depends(get_db)):
     incidents = db.query(models.Incident).order_by(models.Incident.timestamp.desc()).all()
     return incidents
+
+
+@router.get("/ai-accuracy", response_model=schemas.AiAccuracyOut)
+def ai_accuracy(
+    db: Session = Depends(get_db),
+    _current_user: models.User = Depends(get_current_user),
+):
+    """Registered before /{incident_id} on purpose — otherwise FastAPI would
+    treat "ai-accuracy" as an incident id lookup and 404. Open to any signed-in
+    role (not admin-only): it's a trust/transparency metric, not management
+    data."""
+    year = datetime.now(timezone.utc).year
+    this_year = [
+        i for i in db.query(models.Incident).all() if i.timestamp and i.timestamp.year == year
+    ]
+
+    confirmed_states = ("confirmed_spill", "response_approved")
+    confirmed = [i for i in this_year if i.human_decision in confirmed_states]
+    false_positive = [i for i in this_year if i.human_decision == "false_positive"]
+    still_under_review = sum(1 for i in this_year if i.human_decision in ("pending", "escalated"))
+
+    reviewed = len(confirmed) + len(false_positive)
+    accuracy_pct = round(len(confirmed) / reviewed * 100, 1) if reviewed else None
+    avg_confirmed = (
+        round(sum(i.ai_probability for i in confirmed) / len(confirmed) * 100, 1) if confirmed else None
+    )
+    avg_false_positive = (
+        round(sum(i.ai_probability for i in false_positive) / len(false_positive) * 100, 1)
+        if false_positive
+        else None
+    )
+
+    return schemas.AiAccuracyOut(
+        year=year,
+        total_incidents=len(this_year),
+        reviewed=reviewed,
+        confirmed=len(confirmed),
+        false_positive=len(false_positive),
+        still_under_review=still_under_review,
+        accuracy_pct=accuracy_pct,
+        avg_confidence_confirmed=avg_confirmed,
+        avg_confidence_false_positive=avg_false_positive,
+    )
 
 
 @router.get("/{incident_id}", response_model=schemas.IncidentOut)
@@ -69,6 +114,15 @@ def create_incident(
     db.add(incident)
     db.commit()
     db.refresh(incident)
+
+    if incident.risk == "HIGH":
+        try:
+            send_slack_incident_alert(incident)
+        except Exception:
+            logging.getLogger("seasentry.slack").exception(
+                "Failed to send Slack alert for incident %s", incident.id
+            )
+
     return incident
 
 
