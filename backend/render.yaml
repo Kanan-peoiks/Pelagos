@@ -21,7 +21,12 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: ADMIN_EMAILS
-        value: seasentry.tech@gmail.com
+        # seasentry.tech@gmail.com was disabled by Google on 2026-09-12
+        # (flagged as bot-like activity during SMTP/2FA testing; appeal in
+        # progress) and is left out of the active list below on purpose.
+        # Once it's restored, add it back as a second admin email:
+        #   value: seasentry.tech@proton.me,seasentry.tech@gmail.com
+        value: seasentry.tech@proton.me
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
