@@ -22,11 +22,9 @@ services:
         sync: false
       - key: ADMIN_EMAILS
         # seasentry.tech@gmail.com was disabled by Google on 2026-09-12
-        # (flagged as bot-like activity during SMTP/2FA testing; appeal in
-        # progress) and is left out of the active list below on purpose.
-        # Once it's restored, add it back as a second admin email:
-        #   value: seasentry.tech@proton.me,seasentry.tech@gmail.com
-        value: seasentry.tech@proton.me
+        # (flagged as bot-like activity during SMTP/2FA testing) and was
+        # restored on 2026-09-14 — added back below as a second admin email.
+        value: seasentry.tech@proton.me,seasentry.tech@gmail.com
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
@@ -38,10 +36,11 @@ services:
       - key: FRONTEND_URL
         value: https://seasentry.vercel.app
       - key: REQUIRE_ADMIN_2FA
-        # Off until the SMTP sender account is confirmed working again —
-        # otherwise admin login would depend on an email that can't be sent.
-        # Once SMTP is restored/replaced, flip this to "true" (env var only,
-        # no redeploy of code needed) to turn the built 2FA flow back on.
+        # Gmail was restored 2026-09-14 but its SMTP send hasn't been tested
+        # yet (deliberately — to avoid tripping Google's bot-abuse flag
+        # again). Leave this "false" until a real send is verified working;
+        # then flip to "true" (env var only, no redeploy needed) to turn the
+        # built 2FA flow back on.
         value: "false"
       - key: SLACK_WEBHOOK_URL
         # Blank = Slack alerts on new HIGH-risk incidents are skipped. Set

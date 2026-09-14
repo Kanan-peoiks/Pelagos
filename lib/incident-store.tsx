@@ -35,8 +35,8 @@ function makeLiveIncident(): Incident {
   return hydrateIncident({
     id: LIVE_INCIDENT_ID,
     displayId: "#LIVE",
-    title: "Central Caspian Pipeline Leak",
-    location: "Central Caspian Sea",
+    title: "Mərkəzi Xəzər Boru Kəməri Sızması",
+    location: "Mərkəzi Xəzər dənizi",
     lat: 40.0,
     lng: 50.4,
     // Backdated a few hours so the wind-drift source estimate has a
@@ -50,9 +50,9 @@ function makeLiveIncident(): Incident {
     portId: "baku",
     spillSource: "Pipeline leak",
     aiSummary:
-      "Live SAR pass detected a fresh dark-signature slick consistent with a subsea pipeline rupture in the central offshore corridor. Compact, newly formed signature — immediate specialist triage recommended.",
+      "Canlı SAR keçidi mərkəzi açıq dəniz dəhlizində sualtı boru kəməri qırılmasına uyğun təzə tünd siqnaturalı ləkə aşkarladı. Yığcam, yeni formalaşmış siqnatura — təcili mütəxəssis triyajı tövsiyə olunur.",
     humanDecision: "pending",
-    responseStatus: "Newly detected — live simulation",
+    responseStatus: "Yeni aşkarlanıb — canlı simulyasiya",
   });
 }
 
@@ -285,7 +285,7 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
             spillSource: input.spillSource,
             detectionSource: "Manual report",
             estimatedCause: input.estimatedCause,
-            aiSummary: input.notes || "Manually reported by a duty operator from the dashboard map.",
+            aiSummary: input.notes || "İdarə paneli xəritəsindən növbətçi operator tərəfindən əl ilə bildirilib.",
           }),
         });
         if (!res.ok) {

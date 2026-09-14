@@ -69,6 +69,10 @@ function ReportsContent() {
     LOW: incidents.filter((i) => i.risk === "LOW").length,
   };
 
+  // Both exports below are fleet-wide aggregate stats only (counts, areas,
+  // risk mix, report history) — not the per-incident AI/satellite/drift
+  // narrative. See IncidentDetailsPanel.tsx's generateIncidentPdf for that
+  // template and its data-source notes.
   const exportCsv = () => {
     const csvEscape = (value: string | number) => {
       const s = String(value);

@@ -21,6 +21,7 @@ import {
   compassLabel,
   SORBENT_RATIO_G,
   type ResponseMaterials,
+  type SpillSourceResult,
 } from "@/lib/spill-physics";
 import { useSpillSourceEstimate } from "@/lib/useSpillSourceEstimate";
 import {
@@ -93,7 +94,122 @@ function findSimilarIncidents(incident: Incident, all: Incident[]) {
     }));
 }
 
-function generateIncidentPdf(incident: Incident, materials: ResponseMaterials) {
+/**
+ * The PDF export is deliberately kept English (see ManualIncidentForm/reports
+ * export etc. for the same rule) while `Incident.title/location/aiSummary/
+ * humanDecisionNote` are now authored in Azerbaijani (the app's UI language).
+ * jsPDF's built-in "helvetica" font also can't render Azerbaijani-specific
+ * letters (ə, ı, ş, ğ, ç, ö, ü) — they come out as mangled Latin-1 fallback
+ * glyphs — so those fields can't just be passed straight through to the PDF
+ * for the seeded/known incidents either way.
+ *
+ * This table holds the original English wording for the incidents we know
+ * about (the 2 seeded demo rows in backend/app/seed.py + the "#LIVE"
+ * simulated incident in lib/incident-store.tsx), keyed by displayId, and
+ * generateIncidentPdf below prefers it over the (Azerbaijani) live fields.
+ * An incident with no entry here (e.g. one created via ManualIncidentForm,
+ * or a future real-ML-detected one) falls back to its own fields as-is —
+ * there is no separate "English version" of an operator's own free-text
+ * report to fall back to. If that matters more later, the real fix is to
+ * store title/aiSummary/humanDecisionNote per-language on the incident
+ * itself (frontend type + backend schema/DB column) instead of this table,
+ * and to embed a Unicode-capable font in jsPDF (e.g. Noto Sans, base64 via
+ * doc.addFileToVFS/addFont) so Azerbaijani text can render correctly too.
+ */
+const INCIDENT_EN_OVERRIDES: Record<
+  string,
+  { title: string; location: string; aiSummary: string; humanDecisionNote?: string }
+> = {
+  "#001": {
+    title: "Sangachal Coast Oil Spill",
+    location: "Sangachal Coast",
+    aiSummary:
+      "Sentinel-1 SAR dark signature detected near Sangachal Terminal export corridor. Morphological analysis suggests elongate slick aligned with prevailing SW current. Recommend human confirmation before response deployment.",
+  },
+  "#002": {
+    title: "Baku Port Oil Spill",
+    location: "Baku Port",
+    aiSummary:
+      "High-confidence slick detected inside Baku Port approaches. Pattern consistent with terminal transfer residue. Containment recommended within 2 nm of berth.",
+  },
+  "#LIVE": {
+    title: "Central Caspian Pipeline Leak",
+    location: "Central Caspian Sea",
+    aiSummary:
+      "Live SAR pass detected a fresh dark-signature slick consistent with a subsea pipeline rupture in the central offshore corridor. Compact, newly formed signature — immediate specialist triage recommended.",
+  },
+};
+
+/**
+ * Report template / data-source map (kept here, next to the generator, so it
+ * stays in sync as fields are wired up). Every section below is either REAL
+ * (backed by an actual stored value or a formula over one) or a documented
+ * SIMULATED placeholder standing in for an integration that isn't built yet.
+ * This function intentionally renders the full future shape of the report —
+ * including sections whose underlying data is still mock — so the template
+ * doesn't need to be redesigned each time a real data source lands; only the
+ * section's inputs change.
+ *
+ *  - Incident information       REAL      — stored incident row (title, location,
+ *                                            coords, timestamp, risk, status, area).
+ *  - AI analysis                SIMULATED — `aiProbability`/`aiSummary` are either
+ *                                            seeded demo values (lib/mock-data.ts,
+ *                                            backend/app/seed.py) or written by a
+ *                                            human via the manual-report form; no
+ *                                            real detection model runs yet. Once
+ *                                            backend/ML_INTEGRATION.md's model is
+ *                                            wired in, these two fields should be
+ *                                            populated from its live inference
+ *                                            output instead.
+ *  - Satellite imagery          NOT BUILT — no real tile is fetched or embedded
+ *                                            anywhere in the app yet (the on-screen
+ *                                            "Original SAR" / "AI Overlay" boxes in
+ *                                            the Satellite Analysis section above
+ *                                            are decorative placeholders too — see
+ *                                            ImagePlaceholder). The Sentinel Hub
+ *                                            OAuth token proxy already exists
+ *                                            (app/api/satellite/token or similar —
+ *                                            check app/api/), but the actual
+ *                                            Process API tile-fetch call was never
+ *                                            implemented. Once it is, embed the
+ *                                            returned PNG/JPEG here with jsPDF's
+ *                                            `doc.addImage(...)`.
+ *  - Spill source & drift       PARTIAL   — `sourceEstimate` is a real computation
+ *                                            (lib/spill-physics.ts's
+ *                                            estimateSpillSource), but over a
+ *                                            documented simplification: wind-only
+ *                                            drift (3% of wind speed), no ocean-
+ *                                            current data. `leakRateBbl`/`depthM`
+ *                                            inside it are deterministic seeded
+ *                                            guesses, not measurements — a real
+ *                                            version would source flow rate from
+ *                                            pipeline SCADA/telemetry and depth
+ *                                            from bathymetric chart data.
+ *  - Human decision              REAL      — actually entered by an operator via
+ *                                            the review actions (applyHumanAction
+ *                                            in lib/incident-store.tsx) and
+ *                                            persisted on the incident row.
+ *  - Response & cleanup          REAL-ish  — `materials` is a deterministic formula
+ *                                            (lib/spill-physics.ts's
+ *                                            deriveResponseMaterials) over the
+ *                                            incident's real area/oil-volume
+ *                                            estimate and the real sorbent ratio
+ *                                            (1g cotton ≈ 25-30g oil), not a live
+ *                                            inventory system — team/vessel
+ *                                            assignment is not yet wired to any
+ *                                            real dispatch system.
+ *
+ * Not yet in this report at all, for when they're built:
+ *  - Real AIS-sourced vessel corroboration (aisstream.io — not integrated).
+ *  - A ML confidence breakdown beyond the single probability number (the
+ *    on-screen texture/edge/spectral gauges are also deterministic mock
+ *    sub-scores — see deriveAiDeepDive above — not a real model's internals).
+ */
+function generateIncidentPdf(
+  incident: Incident,
+  materials: ResponseMaterials,
+  sourceEstimate: SpillSourceResult | null
+) {
   const doc = new jsPDF();
   let y = 20;
   const line = (text: string, size = 11, bold = false, gap = 7) => {
@@ -102,31 +218,88 @@ function generateIncidentPdf(incident: Incident, materials: ResponseMaterials) {
     doc.text(text, 14, y);
     y += gap;
   };
+  const wrapped = (text: string, size = 10, gap = 5.5) => {
+    doc.setFontSize(size);
+    doc.setFont("helvetica", "normal");
+    const chunks = doc.splitTextToSize(text, 182);
+    chunks.forEach((chunk: string) => {
+      doc.text(chunk, 14, y);
+      y += gap;
+    });
+  };
+  const ensureSpace = (needed = 12) => {
+    if (y + needed > 275) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+  const en = INCIDENT_EN_OVERRIDES[incident.displayId];
 
   line("SeaSentry — Incident Response Report", 18, true, 10);
   doc.setDrawColor(200);
   doc.line(14, y - 4, 196, y - 4);
   y += 2;
 
-  line(`Incident ${incident.displayId} — ${incident.title}`, 13, true, 8);
-  line(`Location: ${incident.location}`);
+  line(`Incident ${incident.displayId} — ${en?.title ?? incident.title}`, 13, true, 8);
+  line(`Location: ${en?.location ?? incident.location}`);
   line(`Coordinates: ${incident.lat.toFixed(4)}°N, ${incident.lng.toFixed(4)}°E`);
   line(`Detected: ${formatDateTimeAZT(incident.timestamp)} AZT`);
   line(`Risk: ${incident.risk}    Status: ${incident.status}`);
   line(`Estimated area: ${formatAreaM2(incident.areaM2)}`);
   y += 4;
 
+  ensureSpace(30);
+  line("AI analysis", 13, true, 8);
+  line(`Detection source: ${incident.detectionSource}`);
+  line(`Model confidence (not-pollution probability): ${Math.round(incident.aiProbability * 100)}%`);
+  wrapped(en?.aiSummary ?? incident.aiSummary);
+  y += 4;
+
+  ensureSpace(24);
+  line("Satellite imagery", 13, true, 8);
+  wrapped(
+    "[Original SAR scene and AI-overlay tile will be embedded here once real Sentinel " +
+      "Hub satellite-image fetching is implemented — see ImagePlaceholder in this file " +
+      "and lib/spill-physics.ts's notes. Not yet available in this demo build.]",
+    9
+  );
+  y += 4;
+
+  ensureSpace(36);
+  line("Spill source & drift analysis", 13, true, 8);
+  if (sourceEstimate?.available) {
+    line(
+      `Estimated source: ${sourceEstimate.lat.toFixed(4)}°N, ${sourceEstimate.lng.toFixed(4)}°E (${sourceEstimate.confidencePct}% confidence)`
+    );
+    line(
+      `Drift: ${sourceEstimate.distanceKm} km over ${sourceEstimate.hoursElapsed} h, toward ${compassLabel(sourceEstimate.downwindBearingDeg)}`
+    );
+    line(`Estimated leak rate: ~${sourceEstimate.leakRateBbl} bbl/h    Estimated depth: ~${sourceEstimate.depthM} m`);
+    wrapped(
+      `Method: reverse-calculated from live wind data (bearing ${sourceEstimate.bearingCompass}, ${sourceEstimate.bearingDeg}°) — a wind-only simplification (no ocean-current data source available); leak rate and depth are seeded estimates, not measurements.`,
+      9
+    );
+  } else {
+    wrapped(
+      "[Not available for this incident — needs live wind data, or the incident is too old for a reliable back-calculation.]",
+      9
+    );
+  }
+  y += 4;
+
+  ensureSpace(24);
   line("Human decision", 13, true, 8);
   line(`Decision: ${HUMAN_DECISION_LABEL[incident.humanDecision] ?? incident.humanDecision}`);
   if (incident.humanDecisionBy) line(`Specialist: ${incident.humanDecisionBy}`);
   if (incident.humanDecisionAt) line(`Decided at: ${formatDateTimeAZT(incident.humanDecisionAt)} AZT`);
-  if (incident.humanDecisionNote) line(`Notes: ${incident.humanDecisionNote}`);
+  if (incident.humanDecisionNote) line(`Notes: ${en?.humanDecisionNote ?? incident.humanDecisionNote}`);
   y += 4;
 
+  ensureSpace(30);
   line("Response & cleanup", 13, true, 8);
   line(`Team assigned: ${materials.team}`);
   line(`Boom deployed: ${materials.boomMeters} m`);
-  line(`Sorbent used: ${materials.sorbentKg} kg (ratio: 1g ≈ ${SORBENT_RATIO_G}g oil)`);
+  line(`Sorbent used: ${materials.sorbentKg} kg (ratio: 1g ~ ${SORBENT_RATIO_G}g oil)`);
   line(`Skimmer units: ${materials.skimmerUnits}`);
   line(`Support vessels: ${materials.vesselCount}`);
   line(`Estimated duration: ${materials.durationHours} h`);
@@ -138,7 +311,7 @@ function generateIncidentPdf(incident: Incident, materials: ResponseMaterials) {
   doc.text(
     "Demo document generated by SeaSentry — an oil-spill intelligence platform. Figures are simulated.",
     14,
-    285
+    290
   );
 
   doc.save(`seasentry-incident-${incident.displayId.replace("#", "")}-report.pdf`);
@@ -255,6 +428,12 @@ function Section({
   );
 }
 
+/** Decorative gradient box — no real satellite tile is fetched or rendered
+ * anywhere in the app yet. Copernicus/Sentinel Hub OAuth credentials already
+ * exist (see app/api/ for the token proxy), but the actual Process API image
+ * request was never implemented. Once it is, swap this for a real <img> (or
+ * canvas) fed by that call, in both the "Original SAR" and "AI Overlay" slots
+ * below and in generateIncidentPdf's Satellite imagery section above. */
 function ImagePlaceholder({
   title,
   subtitle,
@@ -367,7 +546,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
     if (pdfState !== "idle" || !live) return;
     setPdfState("generating");
     setTimeout(() => {
-      generateIncidentPdf(live, materials);
+      generateIncidentPdf(live, materials, sourceEstimate);
       setPdfState("ready");
       saveReportSnapshot(live, materials);
     }, 1200);

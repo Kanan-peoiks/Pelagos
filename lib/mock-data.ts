@@ -173,7 +173,7 @@ export type TrendData = {
 /** Caspian Sea / Azerbaijan overview — primary dashboard map focus. */
 export const CASPIAN_OVERVIEW = {
   id: "caspian",
-  name: "Caspian Sea — Azerbaijan",
+  name: "Xəzər dənizi — Azərbaycan",
   lat: 40.15,
   lng: 50.05,
   zoom: 7.2,
@@ -286,11 +286,11 @@ export function hydrateIncident(raw: Record<string, unknown>): Incident {
 
   return {
     ...(raw as unknown as Incident),
-    title: (raw.title as string) || `${location} Oil Spill`,
+    title: (raw.title as string) || `${location} — Neft Sızması`,
     detectionSource: (raw.detectionSource as Incident["detectionSource"]) || "Sentinel-1 SAR",
     estimatedCause:
       (raw.estimatedCause as string) ||
-      `Possible ${spillSource.toLowerCase()} — requires specialist confirmation`,
+      `Ehtimal olunan ${spillSource.toLowerCase()} — mütəxəssis təsdiqi tələb olunur`,
     reviewStatus:
       (raw.reviewStatus as ReviewStatus) ||
       deriveReviewStatus({ status, humanDecision }),
@@ -388,6 +388,10 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// Vessel positions/headings below are static mock data (mockData.vessels),
+// not live tracking — once real AIS integration exists (aisstream.io is a
+// free option, not yet wired in), this function's inputs should come from
+// that feed instead, keeping the same OpsVessel output shape.
 export function getEnrichedVessels(incidents: Incident[] = mockData.incidents): OpsVessel[] {
   const active = incidents.filter((i) => i.status !== "resolved" && i.status !== "rejected");
 
@@ -438,17 +442,17 @@ export function distanceToIncidentKm(vessel: OpsVessel, incident: Incident) {
 
 export const mockData = {
   ports: [
-    { id: "baku", name: "Baku Port", lat: 40.37, lng: 49.85 },
-    { id: "sumgait", name: "Sumgait Port", lat: 40.59, lng: 49.64 },
-    { id: "alyat", name: "Alyat Port", lat: 39.96, lng: 49.42 },
-    { id: "sangachal", name: "Sangachal", lat: 40.19, lng: 49.48 },
+    { id: "baku", name: "Bakı Limanı", lat: 40.37, lng: 49.85 },
+    { id: "sumgait", name: "Sumqayıt Limanı", lat: 40.59, lng: 49.64 },
+    { id: "alyat", name: "Ələt Limanı", lat: 39.96, lng: 49.42 },
+    { id: "sangachal", name: "Sanqaçal", lat: 40.19, lng: 49.48 },
   ] as Port[],
 
   incidents: ([
     {
       id: "inc-024",
       displayId: "#024",
-      location: "Sangachal Coast",
+      location: "Sanqaçal sahili",
       lat: 40.15,
       lng: 49.62,
       timestamp: "2026-08-10T06:35:00Z",
@@ -459,15 +463,15 @@ export const mockData = {
       portId: "sangachal",
       spillSource: "Pipeline leak",
       aiSummary:
-        "Sentinel-1 SAR dark signature detected near Sangachal Terminal export corridor. Morphological analysis suggests elongate slick aligned with prevailing SW current. Recommend human confirmation before response deployment.",
+        "Sentinel-1 SAR görüntüsündə Sanqaçal terminalının ixrac dəhlizi yaxınlığında tünd siqnatura aşkarlandı. Morfoloji təhlil ləkənin üstünlük təşkil edən CQ axını istiqamətində uzandığını göstərir. Əməliyyata başlamazdan əvvəl insan təsdiqi tövsiyə olunur.",
       humanDecision: "pending",
-      responseStatus: "Awaiting human review",
+      responseStatus: "İnsan yoxlaması gözlənilir",
       relatedVesselId: "v-011",
     },
     {
       id: "inc-023",
       displayId: "#023",
-      location: "Baku Port",
+      location: "Bakı Limanı",
       lat: 40.32,
       lng: 49.90,
       timestamp: "2026-08-10T05:12:00Z",
@@ -478,18 +482,18 @@ export const mockData = {
       portId: "baku",
       spillSource: "Port terminal",
       aiSummary:
-        "High-confidence slick detected inside Baku Port approaches. Pattern consistent with terminal transfer residue. Containment recommended within 2 nm of berth.",
+        "Bakı Limanı yaxınlaşma zonasında yüksək ehtimallı ləkə aşkarlandı. Naxış terminal transfer qalıqlarına uyğun gəlir. Bərtdən 2 dəniz mili radiusunda məhdudlaşdırma tövsiyə olunur.",
       humanDecision: "response_approved",
       humanDecisionBy: "Operator A. Mammadov",
       humanDecisionAt: "2026-08-10T05:25:00Z",
-      humanDecisionNote: "Confirmed spill. Bravo Team assigned for boom deployment.",
-      responseStatus: "Cleaning in progress — Bravo Team",
+      humanDecisionNote: "Neft sızması təsdiqləndi. Bum bərpası üçün Bravo Team təyin olundu.",
+      responseStatus: "Təmizləmə davam edir — Bravo Team",
       relatedVesselId: "v-001",
     },
     {
       id: "inc-022",
       displayId: "#022",
-      location: "Alat",
+      location: "Ələt",
       lat: 39.92,
       lng: 49.55,
       timestamp: "2026-08-10T04:41:00Z",
@@ -500,18 +504,18 @@ export const mockData = {
       portId: "alyat",
       spillSource: "Unknown / natural seep",
       aiSummary:
-        "Small dark patch near Alat logistics zone. Moderate confidence; could include lookalike calm-sea signature. Area contained and verified clear.",
+        "Ələt logistika zonası yaxınlığında kiçik tünd ləkə. Orta ehtimal; sakit dəniz səthinə bənzər yalançı siqnal ola bilər. Ərazi məhdudlaşdırılıb və təmiz olduğu təsdiqlənib.",
       humanDecision: "confirmed_spill",
       humanDecisionBy: "Operator N. Aliyeva",
       humanDecisionAt: "2026-08-10T04:50:00Z",
-      humanDecisionNote: "Minor residue confirmed and cleaned.",
-      responseStatus: "Cleaning completed",
+      humanDecisionNote: "Kiçik qalıq təsdiqləndi və təmizləndi.",
+      responseStatus: "Təmizləmə tamamlandı",
       relatedVesselId: "v-010",
     },
     {
       id: "inc-021",
       displayId: "#021",
-      location: "Sumgait Industrial",
+      location: "Sumqayıt Sənaye Zonası",
       lat: 40.63,
       lng: 49.75,
       timestamp: "2026-08-09T18:22:00Z",
@@ -522,18 +526,18 @@ export const mockData = {
       portId: "sumgait",
       spillSource: "Illegal dumping",
       aiSummary:
-        "Strong SAR anomaly adjacent to Sumgait industrial outfall. Texture and edge sharpness inconsistent with natural seepage. High probability anthropogenic discharge.",
+        "Sumqayıt sənaye kanalizasiya kollektoru yaxınlığında güclü SAR anomaliyası. Toxuma və kənar kəskinliyi təbii sızmaya uyğun gəlmir. Antropogen tullantı ehtimalı yüksəkdir.",
       humanDecision: "response_approved",
       humanDecisionBy: "Operator A. Mammadov",
       humanDecisionAt: "2026-08-09T18:30:00Z",
-      humanDecisionNote: "High-risk confirmation. Alpha Response mobilized.",
-      responseStatus: "Cleaning in progress — Alpha Response",
+      humanDecisionNote: "Yüksək risk təsdiqləndi. Alpha Response səfərbər edildi.",
+      responseStatus: "Təmizləmə davam edir — Alpha Response",
       relatedVesselId: "v-006",
     },
     {
       id: "inc-020",
       displayId: "#020",
-      location: "Absheron Peninsula",
+      location: "Abşeron yarımadası",
       lat: 40.41,
       lng: 50.40,
       timestamp: "2026-08-09T14:05:00Z",
@@ -544,15 +548,15 @@ export const mockData = {
       portId: "baku",
       spillSource: "Tanker discharge",
       aiSummary:
-        "Linear slick segment east of Absheron shore. AIS context shows tanker traffic within 3 km of acquisition time. Probable bilge or transfer residual.",
+        "Abşeron sahilinin şərqində xətti ləkə seqmenti. AIS məlumatları çəkiliş anında 3 km radiusda tanker hərəkəti olduğunu göstərir. Ehtimal olunan trüm və ya transfer qalığı.",
       humanDecision: "pending",
-      responseStatus: "Awaiting human review",
+      responseStatus: "İnsan yoxlaması gözlənilir",
       relatedVesselId: "v-005",
     },
     {
       id: "inc-019",
       displayId: "#019",
-      location: "Neft Daşları Outer",
+      location: "Neft Daşları (Xarici)",
       lat: 40.248,
       lng: 50.852,
       timestamp: "2026-08-09T09:48:00Z",
@@ -563,14 +567,14 @@ export const mockData = {
       portId: "baku",
       spillSource: "Offshore platform",
       aiSummary:
-        "Largest open-water anomaly this cycle near Neft Daşları complex. Multi-look SAR consensus 96%. Immediate specialist triage recommended.",
+        "Bu dövrün ən böyük açıq dəniz anomaliyası Neft Daşları kompleksi yaxınlığında. Çoxbaxışlı SAR konsensusu 96%. Təcili mütəxəssis triyajı tövsiyə olunur.",
       humanDecision: "pending",
-      responseStatus: "Newly detected — queued for AI package review",
+      responseStatus: "Yeni aşkarlanıb — AI paket yoxlaması növbəsində",
     },
     {
       id: "inc-018",
       displayId: "#018",
-      location: "Chilov Island Approaches",
+      location: "Çilov adası yaxınlaşma zonası",
       lat: 40.33,
       lng: 50.6,
       timestamp: "2026-08-08T16:20:00Z",
@@ -581,17 +585,17 @@ export const mockData = {
       portId: "baku",
       spillSource: "Unknown / natural seep",
       aiSummary:
-        "Low-to-moderate confidence dark patch. Spectral / morphological cross-check suggests wind-aligned lookalike rather than hydrocarbon.",
+        "Aşağı-orta ehtimallı tünd ləkə. Spektral/morfoloji yoxlama karbohidrogendən çox küləyə uyğun yalançı siqnalı göstərir.",
       humanDecision: "false_positive",
       humanDecisionBy: "Operator N. Aliyeva",
       humanDecisionAt: "2026-08-08T17:05:00Z",
-      humanDecisionNote: "Rejected as wind-lookalike. No response required.",
-      responseStatus: "No response — false positive",
+      humanDecisionNote: "Külək bənzərliyi kimi rədd edildi. Əməliyyat tələb olunmur.",
+      responseStatus: "Əməliyyat yoxdur — yalançı siqnal",
     },
     {
       id: "inc-017",
       displayId: "#017",
-      location: "Shimali Absheron Banks",
+      location: "Şimali Abşeron Sıra Dağları",
       lat: 40.55,
       lng: 50.45,
       timestamp: "2026-08-08T11:10:00Z",
@@ -602,17 +606,17 @@ export const mockData = {
       portId: "sumgait",
       spillSource: "Tanker discharge",
       aiSummary:
-        "Discrete slick north of Absheron banks. Linked to transit corridor vessel traffic. Contained and cleaned within 6 hours.",
+        "Abşeron sıra dağlarının şimalında ayrıca ləkə. Tranzit dəhlizi gəmi hərəkəti ilə əlaqələndirilib. 6 saat ərzində məhdudlaşdırılıb və təmizlənib.",
       humanDecision: "response_approved",
       humanDecisionBy: "Operator A. Mammadov",
       humanDecisionAt: "2026-08-08T11:40:00Z",
-      responseStatus: "Cleaning completed",
+      responseStatus: "Təmizləmə tamamlandı",
       relatedVesselId: "v-008",
     },
     {
       id: "inc-016",
       displayId: "#016",
-      location: "Garadagh Shoreline",
+      location: "Qaradağ sahili",
       lat: 40.06,
       lng: 49.60,
       timestamp: "2026-08-07T08:55:00Z",
@@ -623,16 +627,16 @@ export const mockData = {
       portId: "sangachal",
       spillSource: "Pipeline leak",
       aiSummary:
-        "Nearshore anomaly south of Garadagh. Geometry aligned with coastal pipeline ROW. Elevated environmental sensitivity due to proximity to shore.",
+        "Qaradağdan cənubda sahilyanı anomaliya. Həndəsə sahil boru kəməri dəhlizi ilə üst-üstə düşür. Sahilə yaxınlıq səbəbindən ətraf mühit həssaslığı yüksəkdir.",
       humanDecision: "pending",
-      responseStatus: "Newly detected",
+      responseStatus: "Yeni aşkarlanıb",
     },
   ] as any[]).map(hydrateIncident),
 
   riskZones: [
     {
       id: "rz-sangachal",
-      name: "Sangachal Terminal Zone",
+      name: "Sanqaçal Terminal Zonası",
       lat: 40.186,
       lng: 49.492,
       radiusM: 4500,
@@ -640,7 +644,7 @@ export const mockData = {
     },
     {
       id: "rz-baku",
-      name: "Baku Port Approaches",
+      name: "Bakı Limanı Yaxınlaşma Zonası",
       lat: 40.37,
       lng: 49.86,
       radiusM: 3500,
@@ -648,7 +652,7 @@ export const mockData = {
     },
     {
       id: "rz-neft",
-      name: "Neft Daşları Corridor",
+      name: "Neft Daşları Dəhlizi",
       lat: 40.25,
       lng: 50.85,
       radiusM: 8000,
@@ -656,7 +660,7 @@ export const mockData = {
     },
     {
       id: "rz-sumgait",
-      name: "Sumgait Coastal Belt",
+      name: "Sumqayıt Sahil Zolağı",
       lat: 40.59,
       lng: 49.64,
       radiusM: 4000,
@@ -668,24 +672,24 @@ export const mockData = {
     {
       id: "alert-1",
       severity: "critical",
-      message: "New SAR detection near Sangachal Coast — AI probability 87%.",
-      location: "Sangachal Coast",
+      message: "Sanqaçal sahili yaxınlığında yeni SAR aşkarlanması — AI ehtimalı 87%.",
+      location: "Sanqaçal sahili",
       timestamp: "2026-08-10T06:35:00Z",
       acknowledged: false,
     },
     {
       id: "alert-2",
       severity: "high",
-      message: "Human review required for Incident #024.",
-      location: "Sangachal Coast",
+      message: "İnsident #024 üçün insan yoxlaması tələb olunur.",
+      location: "Sanqaçal sahili",
       timestamp: "2026-08-10T06:48:00Z",
       acknowledged: false,
     },
     {
       id: "alert-3",
       severity: "medium",
-      message: "Cleanup underway at Baku Port — Incident #023.",
-      location: "Baku Port",
+      message: "Bakı Limanında təmizləmə davam edir — İnsident #023.",
+      location: "Bakı Limanı",
       timestamp: "2026-08-10T05:40:00Z",
       acknowledged: true,
     },
@@ -823,83 +827,83 @@ export const mockData = {
   activityLog: [
     {
       timestamp: "2026-08-10T06:48:00Z",
-      event: "Human review required — Incident #024 Sangachal Coast",
+      event: "İnsan yoxlaması tələb olunur — İnsident #024 Sanqaçal sahili",
       portId: "sangachal",
       type: "review",
       incidentId: "#024",
     },
     {
       timestamp: "2026-08-10T06:42:00Z",
-      event: "AI analysis completed — 87% spill probability",
+      event: "AI təhlili tamamlandı — 87% sızma ehtimalı",
       portId: "sangachal",
       type: "ai_analysis",
       incidentId: "#024",
     },
     {
       timestamp: "2026-08-10T06:35:00Z",
-      event: "New satellite detection — Sangachal Coast (1,150 m²)",
+      event: "Yeni peyk aşkarlanması — Sanqaçal sahili (1,150 m²)",
       portId: "sangachal",
       type: "detection",
       incidentId: "#024",
     },
     {
       timestamp: "2026-08-10T05:40:00Z",
-      event: "Response operation initiated — Baku Port cleanup team deployed",
+      event: "Əməliyyat başladıldı — Bakı Limanı təmizləmə komandası göndərildi",
       portId: "baku",
       type: "response",
       incidentId: "#023",
     },
     {
       timestamp: "2026-08-10T05:25:00Z",
-      event: "Incident confirmed by operator — #023 Baku Port",
+      event: "İnsident operator tərəfindən təsdiqləndi — #023 Bakı Limanı",
       portId: "baku",
       type: "confirmed",
       incidentId: "#023",
     },
     {
       timestamp: "2026-08-10T05:18:00Z",
-      event: "AI analysis completed — 91% spill probability",
+      event: "AI təhlili tamamlandı — 91% sızma ehtimalı",
       portId: "baku",
       type: "ai_analysis",
       incidentId: "#023",
     },
     {
       timestamp: "2026-08-10T05:12:00Z",
-      event: "New satellite detection — Baku Port (420 m²)",
+      event: "Yeni peyk aşkarlanması — Bakı Limanı (420 m²)",
       portId: "baku",
       type: "detection",
       incidentId: "#023",
     },
     {
       timestamp: "2026-08-10T04:55:00Z",
-      event: "Cleanup complete — Incident #022 Alat marked resolved",
+      event: "Təmizləmə tamamlandı — İnsident #022 Ələt həll edilmiş kimi qeyd edildi",
       portId: "alyat",
       type: "cleanup",
       incidentId: "#022",
     },
     {
       timestamp: "2026-08-10T03:10:00Z",
-      event: "Vessel location updated — Kapitan Rashid approaching Baku Port",
+      event: "Gəminin yeri yeniləndi — Kapitan Rashid Bakı Limanına yaxınlaşır",
       portId: "baku",
       type: "vessel",
     },
     {
       timestamp: "2026-08-09T18:40:00Z",
-      event: "Response operation initiated — Sumgait Industrial #021",
+      event: "Əməliyyat başladıldı — Sumqayıt Sənaye Zonası #021",
       portId: "sumgait",
       type: "response",
       incidentId: "#021",
     },
     {
       timestamp: "2026-08-09T18:30:00Z",
-      event: "Incident confirmed — High risk #021 Sumgait",
+      event: "İnsident təsdiqləndi — Yüksək risk #021 Sumqayıt",
       portId: "sumgait",
       type: "confirmed",
       incidentId: "#021",
     },
     {
       timestamp: "2026-08-09T09:55:00Z",
-      event: "AI analysis completed — 96% probability at Neft Daşları",
+      event: "AI təhlili tamamlandı — Neft Daşlarında 96% ehtimal",
       portId: "baku",
       type: "ai_analysis",
       incidentId: "#019",

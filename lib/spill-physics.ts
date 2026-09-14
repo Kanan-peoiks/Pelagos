@@ -113,6 +113,9 @@ export function estimateSpillSource(
 
   const { lat, lng } = destinationPoint(incident.lat, incident.lng, bearingDeg, distanceKm);
 
+  // leakRateBbl/depthM below are deterministic seeded placeholders, not
+  // measurements — a real implementation would source leak rate from
+  // pipeline SCADA/flow telemetry and depth from bathymetric chart data.
   const seed = hashString(incident.id + "-source");
   let confidencePct = 92 - hoursElapsed * 4;
   if (sea?.seaState === "Rough") confidencePct -= 8;
