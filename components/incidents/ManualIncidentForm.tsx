@@ -72,7 +72,7 @@ export default function ManualIncidentForm({ lat, lng, onClose, onCreated }: Pro
       areaM2: Number(areaM2),
       risk,
       spillSource,
-      estimatedCause: estimatedCause.trim() || "Reported by duty operator — cause under investigation",
+      estimatedCause: estimatedCause.trim() || "Növbətçi operator tərəfindən bildirilib — səbəb araşdırılır",
       notes: notes.trim() || undefined,
     };
 
