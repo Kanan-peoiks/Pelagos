@@ -32,6 +32,10 @@ type Props = {
    * marking a new incident's location. */
   placementMode?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
+  /** Overrides the banner shown while placementMode is on — defaults to the
+   * "mark a new incident" wording when omitted (e.g. for the imagery-scan
+   * interaction instead, which reuses the same click-to-pick-a-point flow). */
+  placementHint?: string;
 };
 
 // Fixed light-theme hex values (not the --color-high/med/low variables) —
@@ -171,6 +175,7 @@ export default function MapPanel({
   onIncidentSelect,
   placementMode = false,
   onMapClick,
+  placementHint,
 }: Props) {
   const { t } = useLanguage();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -453,7 +458,7 @@ export default function MapPanel({
             pointerEvents: "none",
           }}
         >
-          Click on the map to mark the new incident&apos;s location
+          {placementHint ?? t.mapPanel.clickToPlaceIncident}
         </div>
       )}
 

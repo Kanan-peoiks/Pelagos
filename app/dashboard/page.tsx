@@ -16,7 +16,7 @@ import { mockData } from "@/lib/mock-data";
 import type { Incident } from "@/lib/types";
 import { getCurrentUser, canOperate } from "@/lib/auth";
 import { useLanguage } from "@/lib/useLanguage";
-import { MapPin, X } from "lucide-react";
+import { MapPin, Satellite, X } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -29,11 +29,14 @@ export default function DashboardPage() {
 function DashboardContent() {
   const router = useRouter();
   const { t } = useLanguage();
-  const { incidents, vessels, riskZones, activity, kpis, hasLiveIncident } = useIncidentStore();
+  const { incidents, vessels, riskZones, activity, kpis, hasLiveIncident, ingestIncident } = useIncidentStore();
   const [activeMapCoords, setActiveMapCoords] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<Incident | null>(null);
-  const [placementMode, setPlacementMode] = useState(false);
+  const [interactionMode, setInteractionMode] = useState<"none" | "report" | "scan">("none");
   const [pendingCoords, setPendingCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [scanStatus, setScanStatus] = useState<{ state: "idle" | "running" | "done"; message?: string }>({
+    state: "idle",
+  });
   const [weatherPortId, setWeatherPortId] = useState(mockData.ports[0].id);
   const weatherPort =
     mockData.ports.find((p) => p.id === weatherPortId) || mockData.ports[0];
@@ -45,6 +48,32 @@ function DashboardContent() {
       return;
     }
     setSelected(inc);
+  };
+
+  const runScan = async (lat: number, lng: number) => {
+    setScanStatus({ state: "running" });
+    try {
+      const res = await fetch("/api/detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat, lng }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setScanStatus({ state: "done", message: t.dashboard.scanError(data?.error || `HTTP ${res.status}`) });
+        return;
+      }
+      if (data.created && data.incident) {
+        const incident = ingestIncident(data.incident);
+        setScanStatus({ state: "idle" });
+        setSelected(incident);
+        return;
+      }
+      const pct = Math.round((data.aiProbability ?? 0) * 100);
+      setScanStatus({ state: "done", message: t.dashboard.scanNoneFound(pct) });
+    } catch {
+      setScanStatus({ state: "done", message: t.dashboard.scanError("network error") });
+    }
   };
 
   const liveIncident = hasLiveIncident
@@ -77,32 +106,109 @@ function DashboardContent() {
         <div className="dashboard-map-row">
           <section className="dashboard-map-wrap" aria-label="Caspian Sea incident map">
             {canAct && (
-            <button
-              type="button"
-              onClick={() => setPlacementMode((v) => !v)}
+            <div
               style={{
                 position: "absolute",
                 top: 12,
                 right: 12,
                 zIndex: 1000,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "none",
-                fontSize: 12,
-                fontWeight: 650,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                background: placementMode ? "var(--color-high)" : "var(--accent)",
-                color: "var(--bg-elevated)",
-                boxShadow: "0 4px 12px rgba(43,45,66,0.25)",
+                display: "flex",
+                gap: 8,
               }}
             >
-              {placementMode ? <X size={14} /> : <MapPin size={14} />}
-              {placementMode ? t.dashboard.cancel : t.dashboard.reportSpill}
-            </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setInteractionMode((m) => (m === "scan" ? "none" : "scan"))
+                }
+                disabled={scanStatus.state === "running"}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "none",
+                  fontSize: 12,
+                  fontWeight: 650,
+                  cursor: scanStatus.state === "running" ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  background: interactionMode === "scan" ? "var(--color-high)" : "var(--surface-muted)",
+                  color: interactionMode === "scan" ? "var(--bg-elevated)" : "var(--text-primary)",
+                  boxShadow: "0 4px 12px rgba(43,45,66,0.25)",
+                  opacity: scanStatus.state === "running" ? 0.7 : 1,
+                }}
+              >
+                {interactionMode === "scan" ? <X size={14} /> : <Satellite size={14} />}
+                {interactionMode === "scan" ? t.dashboard.cancel : t.dashboard.checkImagery}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setInteractionMode((m) => (m === "report" ? "none" : "report"))
+                }
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "none",
+                  fontSize: 12,
+                  fontWeight: 650,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  background: interactionMode === "report" ? "var(--color-high)" : "var(--accent)",
+                  color: "var(--bg-elevated)",
+                  boxShadow: "0 4px 12px rgba(43,45,66,0.25)",
+                }}
+              >
+                {interactionMode === "report" ? <X size={14} /> : <MapPin size={14} />}
+                {interactionMode === "report" ? t.dashboard.cancel : t.dashboard.reportSpill}
+              </button>
+            </div>
+            )}
+            {scanStatus.state !== "idle" && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 56,
+                  right: 12,
+                  zIndex: 1000,
+                  maxWidth: 280,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  fontSize: 11.5,
+                  lineHeight: 1.4,
+                  fontWeight: 550,
+                  background: "var(--bg-elevated)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--glass-border)",
+                  boxShadow: "0 4px 12px rgba(43,45,66,0.2)",
+                }}
+              >
+                {scanStatus.state === "running" ? t.dashboard.scanRunning : scanStatus.message}
+                {scanStatus.state === "done" && (
+                  <button
+                    type="button"
+                    onClick={() => setScanStatus({ state: "idle" })}
+                    style={{
+                      display: "block",
+                      marginTop: 4,
+                      background: "none",
+                      border: "none",
+                      color: "var(--accent)",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 650,
+                      padding: 0,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {t.common.close}
+                  </button>
+                )}
+              </div>
             )}
             <MapPanel
               incidents={incidents}
@@ -113,10 +219,16 @@ function DashboardContent() {
               focusedIncidentId={selected?.id ?? null}
               sourceEstimates={sourceEstimates}
               onIncidentSelect={handleIncidentSelect}
-              placementMode={placementMode}
+              placementMode={interactionMode !== "none"}
+              placementHint={interactionMode === "scan" ? t.mapPanel.clickToScan : undefined}
               onMapClick={(lat, lng) => {
+                if (interactionMode === "scan") {
+                  setInteractionMode("none");
+                  runScan(lat, lng);
+                  return;
+                }
                 setPendingCoords({ lat, lng });
-                setPlacementMode(false);
+                setInteractionMode("none");
               }}
             />
           </section>

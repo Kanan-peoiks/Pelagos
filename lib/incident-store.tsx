@@ -124,6 +124,11 @@ type IncidentStoreValue = {
   getIncidentById: (id: string) => Incident | undefined;
   applyHumanAction: (input: ApplyActionInput) => void;
   createIncident: (input: ManualIncidentInput) => Promise<CreateIncidentResult>;
+  /** Injects an incident the caller already created through some other
+   * endpoint (e.g. POST /detect's real-imagery scan) into local state, so it
+   * shows up immediately without a page reload — mirrors what createIncident
+   * does after its own POST /incidents call. */
+  ingestIncident: (raw: Record<string, unknown>) => Incident;
   hasLiveIncident: boolean;
   simulateLiveIncident: () => void;
   resolveLiveIncident: () => void;
@@ -302,6 +307,12 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const ingestIncident = useCallback((raw: Record<string, unknown>): Incident => {
+    const normalized = normalizeIncident(raw);
+    setIncidents((prev) => [normalized, ...prev]);
+    return normalized;
+  }, []);
+
   const simulateLiveIncident = useCallback(() => {
     setIncidents((prev) =>
       prev.some((i) => i.id === LIVE_INCIDENT_ID)
@@ -333,6 +344,7 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
       getIncidentById,
       applyHumanAction,
       createIncident,
+      ingestIncident,
       hasLiveIncident,
       simulateLiveIncident,
       resolveLiveIncident,
@@ -344,6 +356,7 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
     getIncidentById,
     applyHumanAction,
     createIncident,
+    ingestIncident,
     hasLiveIncident,
     simulateLiveIncident,
     resolveLiveIncident,

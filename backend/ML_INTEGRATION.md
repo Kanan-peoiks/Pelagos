@@ -1,68 +1,81 @@
 # ML Integration Guide — SeaSentry `/detect`
 
-This is the contract and integration plan for wiring a real oil-spill detection
-model into the backend. Everything here is scoped to that one piece — the
-rest of the backend (auth, incidents, decisions) is already done and does not
-need to change for this to work.
+Updated 2026-09-16: the real satellite fetch and a classical (non-ML)
+detection baseline are now built and wired end-to-end. This doc is now
+scoped to one thing: **replacing that classical baseline with a real
+trained model.** Nothing else in the backend needs to change for that.
 
-## 1. Where you're working
+## 1. What already works — read this before writing any code
 
-`backend/app/routers/detect.py` currently returns a 503 stub:
+- `POST /detect` (`app/routers/detect.py`) is a real endpoint, not a stub.
+  Given `{lat, lng}`, it:
+  1. Fetches an actual current Sentinel-1 SAR tile for that point from the
+     Copernicus Data Space Ecosystem / Sentinel Hub (`app/satellite.py`,
+     `fetch_sar_tile`) — a real 512×512 grayscale image of real radar
+     backscatter, not a mock.
+  2. Runs `app/spill_detect.py`'s `analyze_tile(png_bytes, lat, half_width_deg)`
+     over it — **this is the function you're replacing.**
+  3. If the result clears `DETECTION_THRESHOLD` (0.5), calls
+     `create_incident_row()` (`app/routers/incidents.py`) to insert a real
+     incident — it flows through the exact same review pipeline as every
+     other incident (dashboard, human decision, reports, PDF export).
+  4. Below threshold, nothing is created (avoids spamming the dashboard
+     with unconfirmed noise).
+- The frontend already has a **"Check for New Imagery"** button on the
+  dashboard (`app/dashboard/page.tsx`) that calls this — click a point on
+  the map, it fetches + analyzes + (maybe) creates an incident, live.
+- `COPERNICUS_CLIENT_ID` / `COPERNICUS_CLIENT_SECRET` (backend env vars,
+  see `.env.example`) are what `app/satellite.py` needs. **As of
+  2026-09-16 the project owner needs to regenerate these** — the old
+  values (that used to live in the frontend's `.env.local`) came back
+  "invalid_client" from Copernicus. Check with them before assuming this
+  part is broken on your end.
+
+## 2. Your actual task
+
+Open `app/spill_detect.py`. Its `analyze_tile()` currently does:
+
+- Threshold the grayscale tile at `mean - 1.25*std` to find dark pixels
+  (oil dampens surface waves → lower SAR backscatter → darker).
+- `scipy.ndimage.binary_opening` + `label` to clean noise and find the
+  largest connected blob.
+- A hand-written confidence formula from contrast/elongation/size, capped
+  at 0.80 — deliberately conservative, since it's a heuristic, not a model.
+
+Replace the body of `analyze_tile()` (or the scoring part of it) with real
+inference, **keeping its signature and `DetectionResult` return shape**
+(`found`, `area_m2`, `ai_probability`, plus whatever else you want to add):
 
 ```python
-@router.post("")
-def detect():
-    raise HTTPException(status_code=503, detail="AI detection is under active development...")
+@dataclass
+class DetectionResult:
+    found: bool
+    area_m2: float = 0.0
+    ai_probability: float = 0.0
+    mask_fraction: float = 0.0
+    elongation: float = 0.0
 ```
 
-Replace this with a real implementation. Everything downstream (dashboard,
-incident review, decisions) already works — you only need to make this one
-endpoint produce real output and, optionally, call `create_incident()` with it.
+If your model outputs a segmentation mask instead of a single blob, you can
+still derive `area_m2` from it the same way the current code does (pixel
+count × real-world m²-per-pixel, computed from the tile's known
+geographic bounds — see the `m2_per_px` line).
 
-## 2. Contract
-
-**Request** (multipart/form-data):
-```
-POST /detect
-  file: <image>        — a SAR tile (or reference to one)
-  lat:  <float>
-  lng:  <float>
-```
-
-**Response** — shaped like `schemas.IncidentCreate` (see `backend/app/schemas.py`):
-```json
-{
-  "areaM2": 850.0,
-  "aiProbability": 0.83,
-  "risk": "HIGH",
-  "estimatedCause": "Possible pipeline leak — requires specialist confirmation",
-  "aiSummary": "SAR dark-signature detected near ..."
-}
-```
-
-`risk` must be one of `"HIGH" | "MEDIUM" | "LOW"`. Everything else in
-`IncidentCreate` (title, location, spillSource, portId...) can be filled with
-reasonable defaults or left for a human to edit later — see step 5.
+Everything upstream of this function (the real fetch, the threshold/
+incident-creation logic, the review workflow, the PDF/report export) does
+not need to change.
 
 ## 3. Model approach — you don't need to start from zero
 
 Oil-spill detection from SAR is a well-studied computer vision problem:
 
-- **Why it works**: an oil slick dampens small surface waves, so it shows up
-  as a **dark patch** in SAR imagery (radar backscatter drops). This is the
-  same physical principle the frontend's copy already describes.
 - **Recommended**: fine-tune an existing **segmentation model** (U-Net /
   DeepLab-style) on a public SAR oil-spill dataset rather than designing an
   architecture from scratch. Several labeled SAR oil-spill datasets exist in
   the remote-sensing literature — search for "SAR oil spill segmentation
   dataset" to find current ones with usable licenses.
-- **If time is short**: a classical CV baseline (intensity thresholding +
-  morphological filtering to isolate dark blobs, then a simple
-  size/shape/confidence heuristic) is a legitimate fallback. It's less
-  impressive than a trained model but it's honest, fast to build, and still
-  produces a real `aiProbability` instead of a fake one.
-- **Either way**, keep the confidence score calibrated: it feeds directly
-  into `aiProbability`, which the UI explicitly labels "not a pollution
+- Keep the confidence score calibrated: it feeds directly into
+  `aiProbability`, which the UI explicitly labels "not a pollution
   probability" — don't let the model claim more certainty than it has.
 
 ## 4. Where it runs — infrastructure constraint that matters
@@ -72,51 +85,27 @@ Render's free tier (what `seasentry-api` runs on) has limited CPU/RAM and
 
 - If your model is light enough to run on CPU in well under a few seconds,
   it can live directly inside this FastAPI service as a new dependency in
-  `requirements.txt` + inference code in `detect.py`. Simplest option —
-  start here if you can.
+  `requirements.txt` + inference code replacing `analyze_tile()`. Simplest
+  option — start here if you can.
 - If it needs real compute (larger segmentation network, GPU), **don't**
   try to cram it into this Render instance. Host inference separately
   (e.g. Hugging Face Inference Endpoints, Modal, Replicate, or your own
-  small paid instance) and have `detect.py` call out to it over HTTP. This
-  keeps a slow/heavy model from ever affecting login or incident-review
-  reliability — those must stay fast and free-tier-friendly since judges/
-  users hit them directly.
+  small paid instance) and have `analyze_tile()` call out to it over HTTP.
+  This keeps a slow/heavy model from ever affecting login or incident-
+  review reliability — those must stay fast and free-tier-friendly.
 
-## 5. How results become incidents — recommended trigger
+## 5. Existing pieces you can reuse
 
-Don't build a background cron job first. Instead:
-
-1. Add a **"Check for new imagery" button** on the dashboard (frontend) that
-   calls `/detect` on demand for the currently-relevant area/time window.
-2. `/detect` fetches or receives the SAR tile, runs inference, and — if
-   `aiProbability` clears a threshold (recommended: **≥ 0.5**) — calls the
-   existing `create_incident()` logic in `routers/incidents.py` to insert a
-   real row.
-3. Below-threshold results should just be returned/logged, **not** turned
-   into an incident — otherwise the dashboard fills with noise and erodes
-   trust in the human-review workflow.
-4. The new incident then flows through the **exact same review pipeline**
-   that already exists: it shows up on the dashboard/incidents page with
-   `humanDecision: "pending"`, and a specialist confirms/rejects/escalates
-   it via the existing `/incidents/{id}/decision` endpoint. **No changes
-   needed to the review workflow** — ML-created and manually-created
-   incidents already look identical to it.
-
-A scheduled/automatic version (periodic polling of new Sentinel-1 passes)
-is a reasonable v2 once the manual-trigger version is proven reliable — but
-it's real added infrastructure (a scheduler, monitoring for missed runs) and
-isn't needed to demonstrate the core capability.
-
-## 6. Existing pieces you can reuse
-
-- **Copernicus credentials** are already wired up on the frontend
-  (`app/api/copernicus-token/route.ts`, env vars `COPERNICUS_CLIENT_ID` /
-  `COPERNICUS_CLIENT_SECRET`) for fetching Sentinel data — ask whether to
-  reuse that token flow from the backend instead of duplicating it.
-- **`detectionSource`** field already has a `"Sentinel-1 SAR"` literal
-  value in `lib/types.ts` / `backend/app/schemas.py` — use it for anything
+- **`app/satellite.py`'s `fetch_sar_tile(lat, lng, half_width_deg)`** — the
+  real image fetch. Returns raw PNG bytes (single-band VV grayscale). If
+  your model wants a different band/polarization or a larger tile, this is
+  the one place to change the Process API request.
+- **`detectionSource`** is already set to `"Sentinel-1 SAR"` for anything
   this pipeline creates (as opposed to `"Manual report"`, which the
-  dashboard's own manual-incident feature uses).
+  dashboard's own manual-incident feature uses) — nothing to change there.
 - **`_DECISION_TRANSITIONS`** in `routers/incidents.py` is the full list of
   what a human can do with any incident once it exists — nothing to add
   there for ML-created ones.
+- **`create_incident_row()`** in `routers/incidents.py` — the shared
+  incident-insert + Slack-alert logic both `POST /incidents` and
+  `POST /detect` call. Don't duplicate it.

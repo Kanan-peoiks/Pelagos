@@ -1,25 +1,106 @@
+"""Real (non-ML) oil-spill detection pass.
+
+Fetches an actual current Sentinel-1 SAR tile for a given point (via
+app/satellite.py's Copernicus/Sentinel Hub integration) and runs a classical
+computer-vision heuristic (app/spill_detect.py) over the real pixels to look
+for a dark-signature blob. This is deliberately NOT a trained model — see
+backend/ML_INTEGRATION.md for the plan to replace spill_detect.analyze_tile()
+with real inference; nothing else here needs to change for that swap.
+
+When the heuristic's confidence clears DETECTION_THRESHOLD, this creates a
+real incident through the exact same path POST /incidents uses
+(create_incident_row in routers/incidents.py) — it shows up in the normal
+review queue identically to a manually-reported or (eventually) ML-detected
+one. Below threshold, nothing is created — a demo full of unconfirmed noise
+would erode trust in the human-review workflow.
 """
-Placeholder for the ML teammate's oil-spill detection model.
 
-Wire the real model in here: accept an image (upload or a reference to a
-satellite tile), run inference, and return a result shaped like
-`schemas.IncidentCreate` (or a subset of it) so it can be handed straight to
-`create_incident()` in routers/incidents.py to register a new detection.
+import logging
 
-Suggested request shape once implemented:
-    POST /detect  (multipart/form-data: file=<image>, lat=<float>, lng=<float>)
-    -> { areaM2, aiProbability, risk, estimatedCause, aiSummary }
-"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, HTTPException, status
+from app import models, schemas
+from app.deps import get_db, require_operator
+from app.routers.incidents import create_incident_row
+from app.satellite import SatelliteFetchError, fetch_sar_tile
+from app.spill_detect import analyze_tile
 
 router = APIRouter(prefix="/detect", tags=["detect"])
+logger = logging.getLogger("seasentry.detect")
+
+DETECTION_THRESHOLD = 0.5
+HALF_WIDTH_DEG = 0.03  # ~3km either side of the requested point
 
 
-@router.post("")
-def detect():
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="AI detection is under active development by our ML team — check back soon. "
-        "In the meantime, incidents can be logged manually from the dashboard map.",
+class DetectRequest(schemas.CamelModel):
+    lat: float
+    lng: float
+    port_id: str | None = None
+
+
+class DetectResponse(schemas.CamelModel):
+    created: bool
+    ai_probability: float
+    area_m2: float = 0.0
+    reason: str | None = None
+    incident: schemas.IncidentOut | None = None
+
+
+@router.post("", response_model=DetectResponse)
+def detect(
+    payload: DetectRequest,
+    db: Session = Depends(get_db),
+    _current_user: models.User = Depends(require_operator),
+):
+    try:
+        tile = fetch_sar_tile(payload.lat, payload.lng, half_width_deg=HALF_WIDTH_DEG)
+    except SatelliteFetchError as e:
+        logger.warning("Satellite fetch failed for (%s, %s): %s", payload.lat, payload.lng, e)
+        raise HTTPException(status_code=502, detail=f"Could not fetch satellite imagery: {e}") from e
+
+    result = analyze_tile(tile, payload.lat, HALF_WIDTH_DEG)
+
+    if not result.found or result.ai_probability < DETECTION_THRESHOLD:
+        return DetectResponse(
+            created=False,
+            ai_probability=result.ai_probability if result.found else 0.0,
+            area_m2=result.area_m2 if result.found else 0.0,
+            reason="No anomaly cleared the confirmation threshold in the fetched imagery.",
+        )
+
+    risk = (
+        "HIGH"
+        if result.area_m2 > 800 or result.ai_probability > 0.65
+        else "MEDIUM"
+        if result.area_m2 > 300 or result.ai_probability > 0.45
+        else "LOW"
+    )
+
+    incident = create_incident_row(
+        db,
+        schemas.IncidentCreate(
+            title=f"{payload.lat:.3f}°, {payload.lng:.3f}° — Aşkarlanmış Anomaliya",
+            location=f"{payload.lat:.3f}°N, {payload.lng:.3f}°E",
+            lat=payload.lat,
+            lng=payload.lng,
+            area_m2=result.area_m2,
+            ai_probability=result.ai_probability,
+            risk=risk,
+            port_id=payload.port_id,
+            detection_source="Sentinel-1 SAR",
+            estimated_cause="Ehtimal olunan neft sızması — mütəxəssis təsdiqi tələb olunur",
+            ai_summary=(
+                f"Real Sentinel-1 SAR keçidində göstərilən koordinatlar ətrafında tünd siqnatura "
+                f"aşkarlandı (klassik təhlil metodu — hələ öyrədilmiş model deyil, bax "
+                f"ML_INTEGRATION.md). Təxmini sahə {result.area_m2:.0f} m², etibarlılıq "
+                f"{result.ai_probability * 100:.0f}%."
+            ),
+        ),
+    )
+    return DetectResponse(
+        created=True,
+        ai_probability=result.ai_probability,
+        area_m2=result.area_m2,
+        incident=incident,
     )

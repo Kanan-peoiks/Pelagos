@@ -85,12 +85,11 @@ def get_incident(incident_id: str, db: Session = Depends(get_db)):
     return _find_incident(db, incident_id)
 
 
-@router.post("", response_model=schemas.IncidentOut, status_code=status.HTTP_201_CREATED)
-def create_incident(
-    payload: schemas.IncidentCreate,
-    db: Session = Depends(get_db),
-    _current_user: models.User = Depends(require_operator),
-):
+def create_incident_row(db: Session, payload: schemas.IncidentCreate) -> models.Incident:
+    """Shared by the POST /incidents endpoint below and routers/detect.py's
+    real-imagery pipeline — both need the exact same row-creation + Slack-
+    alert behavior, just from different callers (a human filling a form vs.
+    an on-demand satellite scan clearing the confidence threshold)."""
     incident = models.Incident(
         display_id=_next_display_id(db),
         title=payload.title,
@@ -108,7 +107,7 @@ def create_incident(
         ai_summary=payload.ai_summary,
         human_decision="pending",
         review_status="PENDING",
-        response_status="Newly detected — awaiting review",
+        response_status="Yeni aşkarlanıb — yoxlama gözlənilir",
         affected_vessel_ids=[],
     )
     db.add(incident)
@@ -124,6 +123,15 @@ def create_incident(
             )
 
     return incident
+
+
+@router.post("", response_model=schemas.IncidentOut, status_code=status.HTTP_201_CREATED)
+def create_incident(
+    payload: schemas.IncidentCreate,
+    db: Session = Depends(get_db),
+    _current_user: models.User = Depends(require_operator),
+):
+    return create_incident_row(db, payload)
 
 
 # Mirrors applyActionToIncident() in lib/incident-store.tsx — keep the two in
