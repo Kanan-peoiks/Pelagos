@@ -367,6 +367,11 @@ export const translations = {
       reportSpill: "Report Spill",
       cancel: "Cancel",
       seaWeather: "Sea & Weather",
+      checkImagery: "Check for New Imagery",
+      scanRunning: "Fetching satellite imagery and analyzing…",
+      scanNoneFound: (pct: number) =>
+        `No confirmed anomaly in the fetched imagery (confidence ${pct}% — below the review threshold).`,
+      scanError: (msg: string) => `Could not complete the scan: ${msg}`,
     },
     kpi: {
       activeIncidents: "Active Incidents",
@@ -435,6 +440,8 @@ export const translations = {
       popupRisk: "Risk",
       popupStatus: "Status",
       popupViewIncident: "View Incident",
+      clickToPlaceIncident: "Click on the map to mark the new incident's location",
+      clickToScan: "Click on the map to scan that area for a real satellite pass",
     },
     incidentDetail: {
       incidentNumber: (id: string) => `Incident ${id}`,
@@ -975,6 +982,11 @@ export const translations = {
       reportSpill: "Sızma Bildir",
       cancel: "İmtina et",
       seaWeather: "Dəniz və Hava",
+      checkImagery: "Yeni Görüntü Yoxla",
+      scanRunning: "Peyk görüntüsü yüklənir və analiz olunur…",
+      scanNoneFound: (pct: number) =>
+        `Yüklənən görüntüdə təsdiqlənmiş anomaliya tapılmadı (etibarlılıq ${pct}% — yoxlama həddindən aşağı).`,
+      scanError: (msg: string) => `Skan tamamlana bilmədi: ${msg}`,
     },
     kpi: {
       activeIncidents: "Aktiv İnsidentlər",
@@ -1043,6 +1055,8 @@ export const translations = {
       popupRisk: "Risk",
       popupStatus: "Status",
       popupViewIncident: "İnsidentə Bax",
+      clickToPlaceIncident: "Yeni insidentin yerini qeyd etmək üçün xəritəyə klikləyin",
+      clickToScan: "O ərazini real peyk keçidi ilə skan etmək üçün xəritəyə klikləyin",
     },
     incidentDetail: {
       incidentNumber: (id: string) => `İnsident ${id}`,

@@ -47,3 +47,7 @@ services:
         # this in the Render dashboard once a workspace webhook exists
         # (never in this file — treated as a secret via sync: false).
         sync: false
+      - key: COPERNICUS_CLIENT_ID
+        sync: false
+      - key: COPERNICUS_CLIENT_SECRET
+        sync: false

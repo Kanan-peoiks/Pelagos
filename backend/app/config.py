@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     # until a workspace webhook is configured.
     slack_webhook_url: str = ""
 
+    # Copernicus Data Space Ecosystem OAuth client (dataspace.copernicus.eu)
+    # for fetching real Sentinel-1 SAR tiles — see app/satellite.py. Left
+    # blank, /detect returns a clear 502 instead of silently faking a result.
+    copernicus_client_id: str = ""
+    copernicus_client_secret: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property

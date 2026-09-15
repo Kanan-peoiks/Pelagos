@@ -129,7 +129,7 @@ one workspace.
 | Database | PostgreSQL (Neon serverless) in production, SQLite fallback for local dev |
 | Email | Gmail SMTP via an app password (stdlib `smtplib`, no third-party API) |
 | Hosting | Vercel (frontend), Render (backend, via a `render.yaml` Blueprint) |
-| Live external data | Open-Meteo (wind/sea state, no key), Copernicus Data Space Ecosystem (token proxy exists, not yet wired to fetch real SAR tiles) |
+| Live external data | Open-Meteo (wind/sea state, no key), Copernicus Data Space Ecosystem / Sentinel Hub (real Sentinel-1 SAR tile fetch, backend-side — see `app/satellite.py`) |
 
 ## Architecture
 
@@ -192,7 +192,7 @@ Pelagos/
 │       ├── reports/
 │       ├── feedback/ feedback/[id]/ feedback/[id]/reply/
 │       ├── admin/{stats,users,users/[id]/role}/
-│       └── copernicus-token/       # Sentinel data token proxy (unused today)
+│       └── detect/                 # Proxies the "check for new imagery" scan to the backend
 ├── components/
 │   ├── AppShell.tsx                # Auth gate + header/sidebar + loading state
 │   ├── MapPanel.tsx                # Leaflet map (markers, slick polygons, source pin)
@@ -286,8 +286,8 @@ panics on this project's PostCSS setup).
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `BACKEND_URL` | Yes | The FastAPI backend's base URL — `http://localhost:8000` locally, the Render URL in production. Never exposed to the browser; only read inside Route Handlers. |
-| `COPERNICUS_CLIENT_ID` / `COPERNICUS_CLIENT_SECRET` | For the token proxy only | Copernicus Data Space Ecosystem credentials — not required for the main app flow. |
-| `COPERNICUS_INSTANCE_ID` | No | Reserved, not consumed by any code yet. |
+
+Copernicus/Sentinel Hub credentials now live on the **backend** instead (see below) — the real SAR tile fetch happens there, not in a frontend Route Handler.
 
 ### Backend (`backend/.env`)
 
@@ -301,6 +301,9 @@ panics on this project's PostCSS setup).
 | `ADMIN_EMAILS` | No | Comma-separated emails auto-promoted to `admin` on register/login — the bootstrap mechanism for the first admin account. |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | For email features | Gmail SMTP + an [app password](https://myaccount.google.com/apppasswords) (requires 2-Step Verification on the account). If unset, emails are logged instead of sent — the flow still works end-to-end for local testing. |
 | `FRONTEND_URL` | For email features | Used to build the link inside password-reset emails. |
+| `REQUIRE_ADMIN_2FA` | No | Gates the built email-code 2FA challenge on admin login. Defaults `false` so a broken email sender can never lock admins out. |
+| `SLACK_WEBHOOK_URL` | For Slack alerts | Incoming Webhook URL — posts an alert when a new HIGH-risk incident is created. Unset = silently skipped. |
+| `COPERNICUS_CLIENT_ID` / `COPERNICUS_CLIENT_SECRET` | For `/detect` | Copernicus Data Space Ecosystem OAuth client (`dataspace.copernicus.eu` → Sentinel Hub → OAuth clients) — used by `app/satellite.py` to fetch real Sentinel-1 SAR tiles. Unset = `/detect` returns a clear 502 instead of faking a result. |
 
 ## Roles & permissions
 
@@ -355,9 +358,15 @@ step; it deploys straight from the first repo.
 - **Vessels, risk zones, and the activity feed** are deterministic mock data
   (`lib/mock-data.ts`) — no live AIS feed is integrated. Flagged as
   out-of-scope for the current backend unless a specific need comes up.
-- **Satellite imagery** — the detail panel shows placeholder SAR/AI-overlay
-  imagery; the Copernicus token proxy exists but isn't yet wired to fetch
-  real tiles.
+- **Satellite imagery in the detail panel** still shows a placeholder
+  SAR/AI-overlay box (`ImagePlaceholder` in `IncidentDetailsPanel.tsx`) —
+  the real tile fetch now exists (`app/satellite.py`, used by `POST
+  /detect`) but its output isn't rendered as an on-screen image anywhere
+  yet, only analyzed.
+- **`POST /detect`'s confidence score is a classical CV heuristic, not a
+  trained model** — real Sentinel-1 pixels, real threshold/blob analysis
+  (`app/spill_detect.py`), but not machine-learned. See
+  `backend/ML_INTEGRATION.md` for swapping in a real model.
 - **AI confidence sub-scores** (texture/edge/spectral breakdown) and the
   "processing pipeline" timings shown in the AI deep-dive are seeded,
   presentation-layer numbers — real once real incidents (ML- or
