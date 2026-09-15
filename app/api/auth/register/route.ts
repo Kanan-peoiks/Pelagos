@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { backendUrl } from "@/lib/server/backend";
+import { verifyTurnstileToken } from "@/lib/server/turnstile";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body?.name || !body?.email || !body?.password) {
     return NextResponse.json({ error: "Name, email and password are required." }, { status: 400 });
+  }
+
+  const captchaOk = await verifyTurnstileToken(body.turnstileToken, "register");
+  if (!captchaOk) {
+    return NextResponse.json({ error: "Verification challenge failed — please try again." }, { status: 403 });
   }
 
   let backend: string;

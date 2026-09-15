@@ -15,16 +15,19 @@ one. Below threshold, nothing is created — a demo full of unconfirmed noise
 would erode trust in the human-review workflow.
 """
 
+import base64
+import io
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from PIL import Image, ImageDraw
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.deps import get_db, require_operator
 from app.routers.incidents import create_incident_row
 from app.satellite import SatelliteFetchError, fetch_sar_tile
-from app.spill_detect import analyze_tile
+from app.spill_detect import DetectionResult, analyze_tile
 
 router = APIRouter(prefix="/detect", tags=["detect"])
 logger = logging.getLogger("seasentry.detect")
@@ -37,6 +40,25 @@ class DetectRequest(schemas.CamelModel):
     lat: float
     lng: float
     port_id: str | None = None
+    # Plain "YYYY-MM-DD" strings from the dashboard's date-range fields —
+    # both or neither. Omitted, fetch_sar_tile falls back to its own
+    # "most recent pass in the last 30 days" default.
+    from_date: str | None = None
+    to_date: str | None = None
+
+
+def _draw_overlay(tile_png: bytes, result: DetectionResult) -> str:
+    """Returns a base64 PNG: the same tile with a red rectangle around the
+    detected blob, so the "AI overlay" panel shows something real instead
+    of a second copy of the plain image."""
+    image = Image.open(io.BytesIO(tile_png)).convert("RGB")
+    if result.bbox_px:
+        row_min, row_max, col_min, col_max = result.bbox_px
+        draw = ImageDraw.Draw(image)
+        draw.rectangle([col_min, row_min, col_max, row_max], outline=(255, 60, 60), width=3)
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
 class DetectResponse(schemas.CamelModel):
@@ -54,7 +76,13 @@ def detect(
     _current_user: models.User = Depends(require_operator),
 ):
     try:
-        tile = fetch_sar_tile(payload.lat, payload.lng, half_width_deg=HALF_WIDTH_DEG)
+        tile = fetch_sar_tile(
+            payload.lat,
+            payload.lng,
+            half_width_deg=HALF_WIDTH_DEG,
+            from_date=payload.from_date,
+            to_date=payload.to_date,
+        )
     except SatelliteFetchError as e:
         logger.warning("Satellite fetch failed for (%s, %s): %s", payload.lat, payload.lng, e)
         raise HTTPException(status_code=502, detail=f"Could not fetch satellite imagery: {e}") from e
@@ -77,6 +105,9 @@ def detect(
         else "LOW"
     )
 
+    original_b64 = base64.b64encode(tile).decode("ascii")
+    overlay_b64 = _draw_overlay(tile, result)
+
     incident = create_incident_row(
         db,
         schemas.IncidentCreate(
@@ -96,6 +127,8 @@ def detect(
                 f"ML_INTEGRATION.md). Təxmini sahə {result.area_m2:.0f} m², etibarlılıq "
                 f"{result.ai_probability * 100:.0f}%."
             ),
+            sar_image_base64=original_b64,
+            sar_overlay_base64=overlay_b64,
         ),
     )
     return DetectResponse(

@@ -106,6 +106,7 @@ export const translations = {
       forgotPassword: "Forgot password?",
       login: "Login",
       register: "Register",
+      completeCaptcha: "Please complete the verification challenge above.",
       noAccount: "Don't have an account?",
       haveAccount: "Already have an account?",
       disclaimer:
@@ -202,7 +203,7 @@ export const translations = {
     },
     vessels: {
       title: "Vessels",
-      subtitle: "AIS situational picture for the Caspian operational corridor. Not connected to a live AIS feed.",
+      subtitle: "AIS situational picture for the Caspian operational corridor.",
       totalVessels: "Total Vessels",
       nearbyVessels: "Nearby Vessels",
       nearbyHint: "< 5 km from an active incident",
@@ -236,8 +237,19 @@ export const translations = {
       distance: "Distance",
       riskStatus: "Risk",
       noNearbyAssociation: "No nearby active incident association.",
-      demoDataNote: "Demonstration AIS data only. A live AIS API can replace this layer later.",
+      demoDataNote: "Demonstration AIS data only — the register above isn't a live feed.",
       kmFrom: (km: string, id: string) => `${km} km from ${id}`,
+      liveAisTitle: "Live AIS Traffic (real)",
+      liveAisSubtitle: "Real vessel transponder positions via aisstream.io — not the demo register above.",
+      fetchLive: "Fetch Live Positions",
+      fetchingLive: "Listening for live positions (~20s)…",
+      liveAisHint:
+        "Opens a real ~20s AIS listening window over the Caspian Sea. Coverage depends on volunteer-operated receivers in range — a quiet result doesn't mean the feed is broken, just that no covered vessel transmitted during that window.",
+      liveAisEmpty: "No real AIS transmissions received in this window. Try again in a moment.",
+      liveAisError: (msg: string) => `Live AIS fetch failed: ${msg}`,
+      liveAisCount: (n: number) => `${n} live vessel${n === 1 ? "" : "s"}`,
+      colName: "Name",
+      unknownVessel: "Unknown vessel",
     },
     admin: {
       title: "Admin",
@@ -368,6 +380,7 @@ export const translations = {
       cancel: "Cancel",
       seaWeather: "Sea & Weather",
       checkImagery: "Check for New Imagery",
+      scanDateRange: "Search window:",
       scanRunning: "Fetching satellite imagery and analyzing…",
       scanNoneFound: (pct: number) =>
         `No confirmed anomaly in the fetched imagery (confidence ${pct}% — below the review threshold).`,
@@ -721,6 +734,7 @@ export const translations = {
       forgotPassword: "Parolu unutmusunuz?",
       login: "Giriş",
       register: "Qeydiyyat",
+      completeCaptcha: "Zəhmət olmasa yuxarıdakı yoxlamanı tamamlayın.",
       noAccount: "Hesabınız yoxdur?",
       haveAccount: "Artıq hesabınız var?",
       disclaimer:
@@ -817,7 +831,7 @@ export const translations = {
     },
     vessels: {
       title: "Gəmilər",
-      subtitle: "Xəzər operativ dəhlizi üçün AIS vəziyyət mənzərəsi. Canlı AIS axınına qoşulmayıb.",
+      subtitle: "Xəzər operativ dəhlizi üçün AIS vəziyyət mənzərəsi.",
       totalVessels: "Ümumi Gəmilər",
       nearbyVessels: "Yaxınlıqdakı Gəmilər",
       nearbyHint: "Aktiv insidentdən < 5 km",
@@ -851,8 +865,19 @@ export const translations = {
       distance: "Məsafə",
       riskStatus: "Risk",
       noNearbyAssociation: "Yaxınlıqda aktiv insident əlaqəsi yoxdur.",
-      demoDataNote: "Yalnız nümayiş AIS datası. Canlı AIS API sonradan bu qatı əvəz edə bilər.",
+      demoDataNote: "Yalnız nümayiş AIS datası — yuxarıdakı reyestr canlı axın deyil.",
       kmFrom: (km: string, id: string) => `${id}-dən ${km} km`,
+      liveAisTitle: "Canlı AIS Trafiki (real)",
+      liveAisSubtitle: "aisstream.io vasitəsilə real gəmi transponder mövqeləri — yuxarıdakı demo reyestr deyil.",
+      fetchLive: "Canlı Mövqeləri Yoxla",
+      fetchingLive: "Canlı mövqelər dinlənilir (~20san)…",
+      liveAisHint:
+        "Xəzər dənizi üzərində real ~20 saniyəlik AIS dinləmə pəncərəsi açır. Əhatə dairəsi həmin bölgədəki könüllü qəbulediciler şəbəkəsindən asılıdır — boş nəticə axının pozulduğunu göstərmir, sadəcə həmin pəncərədə əhatə olunan gəmi siqnal göndərməyib.",
+      liveAisEmpty: "Bu pəncərədə real AIS siqnalı alınmadı. Bir az sonra yenidən cəhd edin.",
+      liveAisError: (msg: string) => `Canlı AIS sorğusu uğursuz oldu: ${msg}`,
+      liveAisCount: (n: number) => `${n} canlı gəmi`,
+      colName: "Ad",
+      unknownVessel: "Naməlum gəmi",
     },
     admin: {
       title: "Admin",
@@ -983,6 +1008,7 @@ export const translations = {
       cancel: "İmtina et",
       seaWeather: "Dəniz və Hava",
       checkImagery: "Yeni Görüntü Yoxla",
+      scanDateRange: "Axtarış aralığı:",
       scanRunning: "Peyk görüntüsü yüklənir və analiz olunur…",
       scanNoneFound: (pct: number) =>
         `Yüklənən görüntüdə təsdiqlənmiş anomaliya tapılmadı (etibarlılıq ${pct}% — yoxlama həddindən aşağı).`,

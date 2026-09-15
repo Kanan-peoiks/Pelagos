@@ -161,19 +161,17 @@ const INCIDENT_EN_OVERRIDES: Record<
  *                                            wired in, these two fields should be
  *                                            populated from its live inference
  *                                            output instead.
- *  - Satellite imagery          NOT BUILT — no real tile is fetched or embedded
- *                                            anywhere in the app yet (the on-screen
- *                                            "Original SAR" / "AI Overlay" boxes in
- *                                            the Satellite Analysis section above
- *                                            are decorative placeholders too — see
- *                                            ImagePlaceholder). The Sentinel Hub
- *                                            OAuth token proxy already exists
- *                                            (app/api/satellite/token or similar —
- *                                            check app/api/), but the actual
- *                                            Process API tile-fetch call was never
- *                                            implemented. Once it is, embed the
- *                                            returned PNG/JPEG here with jsPDF's
- *                                            `doc.addImage(...)`.
+ *  - Satellite imagery          REAL, when present — incidents created via the
+ *                                            "Check for New Imagery" scan
+ *                                            (POST /detect) carry a real fetched
+ *                                            Sentinel-1 tile + an AI-overlay
+ *                                            rectangle in sarImageBase64/
+ *                                            sarOverlayBase64, embedded below via
+ *                                            jsPDF's doc.addImage(...). Seeded or
+ *                                            manually-reported incidents have
+ *                                            neither field and fall back to the
+ *                                            placeholder note (see ImagePlaceholder
+ *                                            in the on-screen panel above).
  *  - Spill source & drift       PARTIAL   — `sourceEstimate` is a real computation
  *                                            (lib/spill-physics.ts's
  *                                            estimateSpillSource), but over a
@@ -255,14 +253,35 @@ function generateIncidentPdf(
   wrapped(en?.aiSummary ?? incident.aiSummary);
   y += 4;
 
-  ensureSpace(24);
+  ensureSpace(incident.sarImageBase64 ? 68 : 24);
   line("Satellite imagery", 13, true, 8);
-  wrapped(
-    "[Original SAR scene and AI-overlay tile will be embedded here once real Sentinel " +
-      "Hub satellite-image fetching is implemented — see ImagePlaceholder in this file " +
-      "and lib/spill-physics.ts's notes. Not yet available in this demo build.]",
-    9
-  );
+  if (incident.sarImageBase64) {
+    const imgW = 88;
+    const imgH = 60;
+    try {
+      doc.addImage(`data:image/png;base64,${incident.sarImageBase64}`, "PNG", 14, y, imgW, imgH);
+      if (incident.sarOverlayBase64) {
+        doc.addImage(`data:image/png;base64,${incident.sarOverlayBase64}`, "PNG", 14 + imgW + 6, y, imgW, imgH);
+      }
+      y += imgH + 3;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.text("Original SAR (VV/VH/contrast, false-color)", 14, y);
+      if (incident.sarOverlayBase64) {
+        doc.text("AI overlay — detected anomaly outlined", 14 + imgW + 6, y);
+      }
+      y += 6;
+    } catch {
+      wrapped("[Satellite image failed to embed.]", 9);
+    }
+  } else {
+    wrapped(
+      "[Original SAR scene and AI-overlay tile will be embedded here once real Sentinel " +
+        "Hub satellite-image fetching is implemented — see ImagePlaceholder in this file " +
+        "and lib/spill-physics.ts's notes. Not available for this incident (no real scan was run).]",
+      9
+    );
+  }
   y += 4;
 
   ensureSpace(36);
@@ -490,6 +509,88 @@ function ImagePlaceholder({
   );
 }
 
+/** A real fetched Sentinel-1 tile (see app/satellite.py + routers/detect.py)
+ * — same footprint as ImagePlaceholder, shown in its place whenever an
+ * incident actually has one (only true for incidents created via the
+ * "Check for New Imagery" scan; seeded/manually-reported incidents never
+ * have a real image and keep showing ImagePlaceholder). */
+function SarImageCard({
+  base64,
+  title,
+  linkLabel,
+  onClick,
+}: {
+  base64: string;
+  title: string;
+  linkLabel?: string;
+  onClick?: () => void;
+}) {
+  const clickable = !!onClick;
+  return (
+    <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+      style={{
+        position: "relative",
+        height: 120,
+        borderRadius: 8,
+        overflow: "hidden",
+        border: clickable ? "1px solid rgba(224,122,95,0.35)" : "1px solid var(--glass-border-light)",
+        cursor: clickable ? "pointer" : "default",
+      }}
+    >
+      <img
+        src={`data:image/png;base64,${base64}`}
+        alt={title}
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          inset: "auto 0 0 0",
+          padding: "4px 8px",
+          background: "linear-gradient(0deg, rgba(0,0,0,0.65), transparent)",
+          fontSize: 10,
+          color: "#fff",
+          fontWeight: 600,
+        }}
+      >
+        {title}
+      </div>
+      {clickable && linkLabel && (
+        <div
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 6,
+            fontSize: 9,
+            fontWeight: 700,
+            color: "#fff",
+            background: "rgba(224,122,95,0.9)",
+            padding: "2px 6px",
+            borderRadius: 4,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {linkLabel}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const actionBtnStyle = (variant: "primary" | "danger" | "neutral" | "warn"): React.CSSProperties => {
   const map = {
     primary: {
@@ -622,17 +723,34 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
 
               <Section title={t.incidentDetail.satelliteAnalysis} icon={<Satellite size={14} />}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <ImagePlaceholder
-                    title={t.incidentDetail.originalSar}
-                    subtitle={t.incidentDetail.originalSarSub}
-                    accent="rgba(129,178,154,0.08)"
-                  />
-                  <ImagePlaceholder
-                    title={t.incidentDetail.aiOverlay}
-                    subtitle={t.incidentDetail.aiOverlaySub}
-                    accent="rgba(224,122,95,0.1)"
-                    onClick={() => router.push(`/ai-analysis?open=${live.id}&wide=1`)}
-                  />
+                  {live.sarImageBase64 ? (
+                    <SarImageCard base64={live.sarImageBase64} title={t.incidentDetail.originalSar} />
+                  ) : (
+                    <ImagePlaceholder
+                      title={t.incidentDetail.originalSar}
+                      subtitle={t.incidentDetail.originalSarSub}
+                      accent="rgba(129,178,154,0.08)"
+                    />
+                  )}
+                  {live.sarOverlayBase64 ? (
+                    <SarImageCard
+                      base64={live.sarOverlayBase64}
+                      title={t.incidentDetail.aiOverlay}
+                      linkLabel={context !== "ai" ? t.incidentDetail.openFullAnalysis : undefined}
+                      onClick={
+                        context !== "ai"
+                          ? () => router.push(`/ai-analysis?open=${live.id}&wide=1`)
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <ImagePlaceholder
+                      title={t.incidentDetail.aiOverlay}
+                      subtitle={t.incidentDetail.aiOverlaySub}
+                      accent="rgba(224,122,95,0.1)"
+                      onClick={() => router.push(`/ai-analysis?open=${live.id}&wide=1`)}
+                    />
+                  )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
                   <Field label={t.incidentDetail.detectedArea}>{formatAreaM2(live.areaM2)}</Field>

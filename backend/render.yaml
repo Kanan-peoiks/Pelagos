@@ -51,3 +51,5 @@ services:
         sync: false
       - key: COPERNICUS_CLIENT_SECRET
         sync: false
+      - key: AISSTREAM_API_KEY
+        sync: false

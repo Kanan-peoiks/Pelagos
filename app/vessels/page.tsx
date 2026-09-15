@@ -10,7 +10,17 @@ import { useIncidentStore } from "@/lib/incident-store";
 import { distanceToIncidentKm } from "@/lib/mock-data";
 import type { OpsVessel } from "@/lib/types";
 import { useLanguage } from "@/lib/useLanguage";
-import { Ship, Radar, AlertTriangle, Link2 } from "lucide-react";
+import { Ship, Radar, AlertTriangle, Link2, Satellite, Loader2 } from "lucide-react";
+
+type LiveVessel = {
+  mmsi: string;
+  name?: string | null;
+  lat: number;
+  lng: number;
+  speedKnots?: number | null;
+  heading?: number | null;
+  lastUpdate?: string | null;
+};
 
 export default function VesselsPage() {
   return (
@@ -34,6 +44,28 @@ function VesselsContent() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<OpsVessel | null>(null);
+  const [liveState, setLiveState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [liveVessels, setLiveVessels] = useState<LiveVessel[]>([]);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  const fetchLiveAis = async () => {
+    setLiveState("loading");
+    setLiveError(null);
+    try {
+      const res = await fetch("/api/vessels/live", { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setLiveState("error");
+        setLiveError(data?.error || `HTTP ${res.status}`);
+        return;
+      }
+      setLiveVessels(Array.isArray(data?.vessels) ? data.vessels : []);
+      setLiveState("done");
+    } catch {
+      setLiveState("error");
+      setLiveError("network error");
+    }
+  };
 
   const nearby = vessels.filter((v) => {
     if (!v.relatedIncidentId) return false;
@@ -219,6 +251,94 @@ function VesselsContent() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div className="panel panel-static" style={{ marginTop: 16 }}>
+          <div className="panel-header" style={{ flexWrap: "wrap", gap: 8 }}>
+            <span className="panel-title">
+              <Satellite size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
+              {t.vessels.liveAisTitle}
+            </span>
+            <button
+              type="button"
+              onClick={fetchLiveAis}
+              disabled={liveState === "loading"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid var(--glass-border)",
+                background: liveState === "loading" ? "var(--surface-muted)" : "var(--accent)",
+                color: liveState === "loading" ? "var(--text-secondary)" : "var(--bg-elevated)",
+                fontSize: 11.5,
+                fontWeight: 650,
+                cursor: liveState === "loading" ? "default" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {liveState === "loading" ? <Loader2 size={13} className="spinner" /> : <Radar size={13} />}
+              {liveState === "loading" ? t.vessels.fetchingLive : t.vessels.fetchLive}
+            </button>
+          </div>
+          <div className="panel-body" style={{ padding: 16, display: "grid", gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
+              {t.vessels.liveAisHint}
+            </p>
+
+            {liveState === "error" && (
+              <div className="auth-error" role="alert">
+                {t.vessels.liveAisError(liveError || "")}
+              </div>
+            )}
+
+            {liveState === "done" && liveVessels.length === 0 && (
+              <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t.vessels.liveAisEmpty}</div>
+            )}
+
+            {liveVessels.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                  {t.vessels.liveAisCount(liveVessels.length)}
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 640 }}>
+                    <thead>
+                      <tr style={{ textAlign: "left", color: "var(--text-tertiary)", fontSize: 10.5 }}>
+                        <th style={{ padding: "6px 10px" }}>{t.vessels.colName}</th>
+                        <th style={{ padding: "6px 10px" }}>{t.vessels.colMmsi}</th>
+                        <th style={{ padding: "6px 10px" }}>{t.vessels.colPosition}</th>
+                        <th style={{ padding: "6px 10px" }}>{t.vessels.colSpeed}</th>
+                        <th style={{ padding: "6px 10px" }}>{t.vessels.colHeading}</th>
+                        <th style={{ padding: "6px 10px" }}>{t.vessels.lastUpdate}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {liveVessels.map((v) => (
+                        <tr key={v.mmsi} style={{ borderTop: "1px solid var(--border-muted)" }}>
+                          <td style={{ padding: "8px 10px", fontWeight: 600 }}>
+                            {v.name || t.vessels.unknownVessel}
+                          </td>
+                          <td style={{ padding: "8px 10px", fontFamily: "ui-monospace, monospace" }}>{v.mmsi}</td>
+                          <td style={{ padding: "8px 10px", fontFamily: "ui-monospace, monospace" }}>
+                            {v.lat.toFixed(3)}°N, {v.lng.toFixed(3)}°E
+                          </td>
+                          <td style={{ padding: "8px 10px" }}>
+                            {v.speedKnots != null ? `${v.speedKnots.toFixed(1)} kn` : "—"}
+                          </td>
+                          <td style={{ padding: "8px 10px" }}>{v.heading != null ? `${v.heading}°` : "—"}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>
+                            {v.lastUpdate || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -38,11 +38,19 @@ class DetectionResult:
     ai_probability: float = 0.0
     mask_fraction: float = 0.0
     elongation: float = 0.0
+    # Pixel-space bounding box of the detected blob (row_min, row_max,
+    # col_min, col_max), inclusive — used to draw the "AI overlay" rectangle
+    # on the same tile (see routers/detect.py). None when nothing was found.
+    bbox_px: tuple[int, int, int, int] | None = None
 
 
 def analyze_tile(png_bytes: bytes, lat: float, half_width_deg: float) -> DetectionResult:
-    image = Image.open(io.BytesIO(png_bytes)).convert("L")
-    pixels = np.asarray(image, dtype=np.float64)
+    image = Image.open(io.BytesIO(png_bytes)).convert("RGB")
+    rgb = np.asarray(image, dtype=np.float64)
+    # G channel = normalized VH backscatter (see app/satellite.py's
+    # evalscript) — cross-polarization is more oil-discriminative than VV
+    # alone, so it's the primary channel for this heuristic.
+    pixels = rgb[:, :, 1]
     height, width = pixels.shape
 
     mean, std = pixels.mean(), pixels.std()
@@ -98,4 +106,5 @@ def analyze_tile(png_bytes: bytes, lat: float, half_width_deg: float) -> Detecti
         ai_probability=ai_probability,
         mask_fraction=round(best_size_px / total_px, 5),
         elongation=round(elongation, 2),
+        bbox_px=(int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())),
     )
