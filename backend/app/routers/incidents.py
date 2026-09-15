@@ -105,6 +105,8 @@ def create_incident_row(db: Session, payload: schemas.IncidentCreate) -> models.
         detection_source=payload.detection_source,
         estimated_cause=payload.estimated_cause,
         ai_summary=payload.ai_summary,
+        sar_image_base64=payload.sar_image_base64,
+        sar_overlay_base64=payload.sar_overlay_base64,
         human_decision="pending",
         review_status="PENDING",
         response_status="Yeni aşkarlanıb — yoxlama gözlənilir",

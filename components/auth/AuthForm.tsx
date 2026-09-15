@@ -7,6 +7,7 @@ import { ArrowRight, Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
 import { login, register, verifyTwoFactor } from "@/lib/auth";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import LanguageToggle from "@/components/ui/LanguageToggle";
+import TurnstileWidget from "@/components/ui/TurnstileWidget";
 import { useLanguage } from "@/lib/useLanguage";
 
 type Mode = "login" | "register";
@@ -28,6 +29,7 @@ export default function AuthForm({ mode }: Props) {
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Set once an admin account's password checks out — switches the form to
   // the "enter the code we emailed you" step instead of finishing login.
@@ -45,10 +47,16 @@ export default function AuthForm({ mode }: Props) {
     setError(null);
     setLoading(true);
 
+    if (mode === "register" && !turnstileToken) {
+      setLoading(false);
+      setError(t.auth.completeCaptcha);
+      return;
+    }
+
     const result =
       mode === "login"
         ? await login(email, password, remember)
-        : await register(fullName, email, password, confirmPassword);
+        : await register(fullName, email, password, confirmPassword, turnstileToken!);
 
     setLoading(false);
 
@@ -252,9 +260,21 @@ export default function AuthForm({ mode }: Props) {
               </div>
             )}
 
+            {mode === "register" && (
+              <TurnstileWidget
+                action="register"
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken(null)}
+              />
+            )}
+
             {error && <div className="auth-error" role="alert">{error}</div>}
 
-            <button type="submit" className="auth-button" disabled={loading}>
+            <button
+              type="submit"
+              className="auth-button"
+              disabled={loading || (mode === "register" && !turnstileToken)}
+            >
               {loading ? (
                 <Loader2 size={18} className="spinner" />
               ) : mode === "login" ? (

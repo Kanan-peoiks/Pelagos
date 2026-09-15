@@ -106,6 +106,8 @@ class IncidentCreate(CamelModel):
     detection_source: str = "Sentinel-1 SAR"
     estimated_cause: Optional[str] = None
     ai_summary: Optional[str] = None
+    sar_image_base64: Optional[str] = None
+    sar_overlay_base64: Optional[str] = None
 
 
 class IncidentOut(CamelModel):
@@ -125,6 +127,8 @@ class IncidentOut(CamelModel):
     detection_source: str
     estimated_cause: Optional[str] = None
     ai_summary: Optional[str] = None
+    sar_image_base64: Optional[str] = None
+    sar_overlay_base64: Optional[str] = None
     human_decision: HumanDecision
     human_decision_note: Optional[str] = None
     human_decision_by: Optional[str] = None
@@ -244,6 +248,23 @@ class AiAccuracyOut(CamelModel):
     accuracy_pct: Optional[float] = None
     avg_confidence_confirmed: Optional[float] = None
     avg_confidence_false_positive: Optional[float] = None
+
+
+# ---- Live AIS (vessels) -------------------------------------------------
+
+
+class LiveVesselOut(CamelModel):
+    mmsi: str
+    name: Optional[str] = None
+    lat: float
+    lng: float
+    speed_knots: Optional[float] = None
+    heading: Optional[float] = None
+    last_update: Optional[str] = None
+
+
+class LiveVesselsOut(CamelModel):
+    vessels: list[LiveVesselOut]
 
 
 class AuditLogOut(CamelModel):

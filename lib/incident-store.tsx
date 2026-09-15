@@ -77,6 +77,8 @@ function normalizeIncident(raw: Record<string, unknown>): Incident {
     detectionSource: (raw.detectionSource as Incident["detectionSource"]) ?? "Sentinel-1 SAR",
     estimatedCause: String(raw.estimatedCause ?? ""),
     aiSummary: String(raw.aiSummary ?? ""),
+    sarImageBase64: (raw.sarImageBase64 as string | undefined) ?? undefined,
+    sarOverlayBase64: (raw.sarOverlayBase64 as string | undefined) ?? undefined,
     humanDecision: (raw.humanDecision as HumanDecision) ?? "pending",
     humanDecisionNote: (raw.humanDecisionNote as string | undefined) ?? undefined,
     humanDecisionBy: (raw.humanDecisionBy as string | undefined) ?? undefined,

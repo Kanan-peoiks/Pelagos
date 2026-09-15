@@ -37,6 +37,10 @@ function DashboardContent() {
   const [scanStatus, setScanStatus] = useState<{ state: "idle" | "running" | "done"; message?: string }>({
     state: "idle",
   });
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const [scanFromDate, setScanFromDate] = useState(monthAgo);
+  const [scanToDate, setScanToDate] = useState(today);
   const [weatherPortId, setWeatherPortId] = useState(mockData.ports[0].id);
   const weatherPort =
     mockData.ports.find((p) => p.id === weatherPortId) || mockData.ports[0];
@@ -56,7 +60,7 @@ function DashboardContent() {
       const res = await fetch("/api/detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat, lng }),
+        body: JSON.stringify({ lat, lng, fromDate: scanFromDate, toDate: scanToDate }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -167,6 +171,59 @@ function DashboardContent() {
                 {interactionMode === "report" ? t.dashboard.cancel : t.dashboard.reportSpill}
               </button>
             </div>
+            )}
+            {interactionMode === "scan" && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 56,
+                  right: 12,
+                  zIndex: 1000,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--glass-border)",
+                  boxShadow: "0 4px 12px rgba(43,45,66,0.2)",
+                  fontSize: 11,
+                }}
+              >
+                <span style={{ color: "var(--text-tertiary)" }}>{t.dashboard.scanDateRange}</span>
+                <input
+                  type="date"
+                  value={scanFromDate}
+                  max={scanToDate}
+                  onChange={(e) => setScanFromDate(e.target.value)}
+                  style={{
+                    fontFamily: "inherit",
+                    fontSize: 11,
+                    background: "var(--bg-base)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--glass-border)",
+                    borderRadius: 6,
+                    padding: "3px 6px",
+                  }}
+                />
+                <span style={{ color: "var(--text-tertiary)" }}>→</span>
+                <input
+                  type="date"
+                  value={scanToDate}
+                  min={scanFromDate}
+                  max={today}
+                  onChange={(e) => setScanToDate(e.target.value)}
+                  style={{
+                    fontFamily: "inherit",
+                    fontSize: 11,
+                    background: "var(--bg-base)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--glass-border)",
+                    borderRadius: 6,
+                    padding: "3px 6px",
+                  }}
+                />
+              </div>
             )}
             {scanStatus.state !== "idle" && (
               <div

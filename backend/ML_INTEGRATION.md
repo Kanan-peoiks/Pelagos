@@ -8,22 +8,34 @@ trained model.** Nothing else in the backend needs to change for that.
 ## 1. What already works — read this before writing any code
 
 - `POST /detect` (`app/routers/detect.py`) is a real endpoint, not a stub.
-  Given `{lat, lng}`, it:
-  1. Fetches an actual current Sentinel-1 SAR tile for that point from the
-     Copernicus Data Space Ecosystem / Sentinel Hub (`app/satellite.py`,
-     `fetch_sar_tile`) — a real 512×512 grayscale image of real radar
-     backscatter, not a mock.
+  Given `{lat, lng, fromDate?, toDate?}`, it:
+  1. Fetches an actual Sentinel-1 tile for that point (and, optionally, a
+     specific date range picked in the dashboard's date fields — otherwise
+     the most recent pass in the last 30 days) from the Copernicus Data
+     Space Ecosystem / Sentinel Hub (`app/satellite.py`, `fetch_sar_tile`)
+     — a real 512×512 **3-band image**, not a mock: R=VV, G=VH, B=VV-VH
+     contrast, all dB-scaled (see `_EVALSCRIPT` in that file for why —
+     short version: VH cross-polarization is more oil-discriminative than
+     VV alone, and dB scaling compresses radar's huge dynamic range into a
+     usable 8-bit range). If your model wants different bands/scaling,
+     this is the one place to change the request.
   2. Runs `app/spill_detect.py`'s `analyze_tile(png_bytes, lat, half_width_deg)`
-     over it — **this is the function you're replacing.**
+     over it (currently reads the G/VH channel) — **this is the function
+     you're replacing.**
   3. If the result clears `DETECTION_THRESHOLD` (0.5), calls
      `create_incident_row()` (`app/routers/incidents.py`) to insert a real
      incident — it flows through the exact same review pipeline as every
-     other incident (dashboard, human decision, reports, PDF export).
+     other incident (dashboard, human decision, reports, PDF export). The
+     fetched tile and an auto-drawn overlay rectangle (from
+     `DetectionResult.bbox_px`) are saved on the incident
+     (`sarImageBase64`/`sarOverlayBase64`) and shown both on-screen (the
+     Satellite Analysis section) and in the exported PDF.
   4. Below threshold, nothing is created (avoids spamming the dashboard
      with unconfirmed noise).
-- The frontend already has a **"Check for New Imagery"** button on the
-  dashboard (`app/dashboard/page.tsx`) that calls this — click a point on
-  the map, it fetches + analyzes + (maybe) creates an incident, live.
+- The frontend already has a **"Check for New Imagery"** button (with a
+  manual date-range picker) on the dashboard (`app/dashboard/page.tsx`)
+  that calls this — click a point on the map, it fetches + analyzes +
+  (maybe) creates an incident, live.
 - `COPERNICUS_CLIENT_ID` / `COPERNICUS_CLIENT_SECRET` (backend env vars,
   see `.env.example`) are what `app/satellite.py` needs. **As of
   2026-09-16 the project owner needs to regenerate these** — the old

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Float, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, String, Text
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -58,6 +58,11 @@ class Incident(Base):
     response_status = Column(String, nullable=True)
     related_vessel_id = Column(String, nullable=True)
     affected_vessel_ids = Column(JSON, nullable=False, default=list)
+    # Base64-encoded PNGs from a real POST /detect satellite scan (see
+    # app/satellite.py + app/routers/detect.py) — null for seeded/manually-
+    # reported incidents, which never had a real image fetched.
+    sar_image_base64 = Column(Text, nullable=True)
+    sar_overlay_base64 = Column(Text, nullable=True)
 
 
 class Report(Base):

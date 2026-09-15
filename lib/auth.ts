@@ -158,7 +158,8 @@ export async function register(
   fullName: string,
   email: string,
   password: string,
-  confirmPassword: string
+  confirmPassword: string,
+  turnstileToken: string
 ): Promise<LoginResult> {
   if (!fullName.trim()) {
     return { status: "error", error: "Full name is required." };
@@ -178,7 +179,7 @@ export async function register(
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: fullName.trim(), email: email.trim(), password }),
+      body: JSON.stringify({ name: fullName.trim(), email: email.trim(), password, turnstileToken }),
     });
 
     if (!res.ok) {

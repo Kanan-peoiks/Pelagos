@@ -66,6 +66,11 @@ export type Incident = {
   /** Operator-facing estimated cause */
   estimatedCause: string;
   aiSummary: string;
+  /** Base64 PNGs from a real POST /detect satellite scan — undefined for
+   * seeded/manually-reported incidents, which never had a real image
+   * fetched. See components/incidents/IncidentDetailsPanel.tsx. */
+  sarImageBase64?: string;
+  sarOverlayBase64?: string;
   humanDecision: HumanDecision;
   humanDecisionNote?: string;
   humanDecisionBy?: string;
