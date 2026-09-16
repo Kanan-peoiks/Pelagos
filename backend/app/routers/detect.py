@@ -111,7 +111,7 @@ def detect(
     incident = create_incident_row(
         db,
         schemas.IncidentCreate(
-            title=f"{payload.lat:.3f}°, {payload.lng:.3f}° — Aşkarlanmış Anomaliya",
+            title=f"{payload.lat:.3f}°, {payload.lng:.3f}° — Detected Anomaly",
             location=f"{payload.lat:.3f}°N, {payload.lng:.3f}°E",
             lat=payload.lat,
             lng=payload.lng,
@@ -120,11 +120,11 @@ def detect(
             risk=risk,
             port_id=payload.port_id,
             detection_source="Sentinel-1 SAR",
-            estimated_cause="Ehtimal olunan neft sızması — mütəxəssis təsdiqi tələb olunur",
+            estimated_cause="Possible oil spill — requires specialist confirmation",
             ai_summary=(
-                f"Real Sentinel-1 SAR keçidində göstərilən koordinatlar ətrafında tünd siqnatura "
-                f"aşkarlandı (klassik təhlil metodu — hələ öyrədilmiş model deyil, bax "
-                f"ML_INTEGRATION.md). Təxmini sahə {result.area_m2:.0f} m², etibarlılıq "
+                f"Dark signature detected near the given coordinates in a real Sentinel-1 SAR "
+                f"pass (classical analysis method — not yet a trained model, see "
+                f"ML_INTEGRATION.md). Estimated area {result.area_m2:.0f} m², confidence "
                 f"{result.ai_probability * 100:.0f}%."
             ),
             sar_image_base64=original_b64,

@@ -95,52 +95,6 @@ function findSimilarIncidents(incident: Incident, all: Incident[]) {
 }
 
 /**
- * The PDF export is deliberately kept English (see ManualIncidentForm/reports
- * export etc. for the same rule) while `Incident.title/location/aiSummary/
- * humanDecisionNote` are now authored in Azerbaijani (the app's UI language).
- * jsPDF's built-in "helvetica" font also can't render Azerbaijani-specific
- * letters (ə, ı, ş, ğ, ç, ö, ü) — they come out as mangled Latin-1 fallback
- * glyphs — so those fields can't just be passed straight through to the PDF
- * for the seeded/known incidents either way.
- *
- * This table holds the original English wording for the incidents we know
- * about (the 2 seeded demo rows in backend/app/seed.py + the "#LIVE"
- * simulated incident in lib/incident-store.tsx), keyed by displayId, and
- * generateIncidentPdf below prefers it over the (Azerbaijani) live fields.
- * An incident with no entry here (e.g. one created via ManualIncidentForm,
- * or a future real-ML-detected one) falls back to its own fields as-is —
- * there is no separate "English version" of an operator's own free-text
- * report to fall back to. If that matters more later, the real fix is to
- * store title/aiSummary/humanDecisionNote per-language on the incident
- * itself (frontend type + backend schema/DB column) instead of this table,
- * and to embed a Unicode-capable font in jsPDF (e.g. Noto Sans, base64 via
- * doc.addFileToVFS/addFont) so Azerbaijani text can render correctly too.
- */
-const INCIDENT_EN_OVERRIDES: Record<
-  string,
-  { title: string; location: string; aiSummary: string; humanDecisionNote?: string }
-> = {
-  "#001": {
-    title: "Sangachal Coast Oil Spill",
-    location: "Sangachal Coast",
-    aiSummary:
-      "Sentinel-1 SAR dark signature detected near Sangachal Terminal export corridor. Morphological analysis suggests elongate slick aligned with prevailing SW current. Recommend human confirmation before response deployment.",
-  },
-  "#002": {
-    title: "Baku Port Oil Spill",
-    location: "Baku Port",
-    aiSummary:
-      "High-confidence slick detected inside Baku Port approaches. Pattern consistent with terminal transfer residue. Containment recommended within 2 nm of berth.",
-  },
-  "#LIVE": {
-    title: "Central Caspian Pipeline Leak",
-    location: "Central Caspian Sea",
-    aiSummary:
-      "Live SAR pass detected a fresh dark-signature slick consistent with a subsea pipeline rupture in the central offshore corridor. Compact, newly formed signature — immediate specialist triage recommended.",
-  },
-};
-
-/**
  * Report template / data-source map (kept here, next to the generator, so it
  * stays in sync as fields are wired up). Every section below is either REAL
  * (backed by an actual stored value or a formula over one) or a documented
@@ -231,15 +185,13 @@ function generateIncidentPdf(
       y = 20;
     }
   };
-  const en = INCIDENT_EN_OVERRIDES[incident.displayId];
-
   line("SeaSentry — Incident Response Report", 18, true, 10);
   doc.setDrawColor(200);
   doc.line(14, y - 4, 196, y - 4);
   y += 2;
 
-  line(`Incident ${incident.displayId} — ${en?.title ?? incident.title}`, 13, true, 8);
-  line(`Location: ${en?.location ?? incident.location}`);
+  line(`Incident ${incident.displayId} — ${incident.title}`, 13, true, 8);
+  line(`Location: ${incident.location}`);
   line(`Coordinates: ${incident.lat.toFixed(4)}°N, ${incident.lng.toFixed(4)}°E`);
   line(`Detected: ${formatDateTimeAZT(incident.timestamp)} AZT`);
   line(`Risk: ${incident.risk}    Status: ${incident.status}`);
@@ -250,7 +202,7 @@ function generateIncidentPdf(
   line("AI analysis", 13, true, 8);
   line(`Detection source: ${incident.detectionSource}`);
   line(`Model confidence (not-pollution probability): ${Math.round(incident.aiProbability * 100)}%`);
-  wrapped(en?.aiSummary ?? incident.aiSummary);
+  wrapped(incident.aiSummary);
   y += 4;
 
   ensureSpace(incident.sarImageBase64 ? 68 : 24);
@@ -311,7 +263,7 @@ function generateIncidentPdf(
   line(`Decision: ${HUMAN_DECISION_LABEL[incident.humanDecision] ?? incident.humanDecision}`);
   if (incident.humanDecisionBy) line(`Specialist: ${incident.humanDecisionBy}`);
   if (incident.humanDecisionAt) line(`Decided at: ${formatDateTimeAZT(incident.humanDecisionAt)} AZT`);
-  if (incident.humanDecisionNote) line(`Notes: ${en?.humanDecisionNote ?? incident.humanDecisionNote}`);
+  if (incident.humanDecisionNote) line(`Notes: ${incident.humanDecisionNote}`);
   y += 4;
 
   ensureSpace(30);

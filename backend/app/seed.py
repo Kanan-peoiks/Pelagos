@@ -11,8 +11,8 @@ from app.models import Incident
 DEMO_INCIDENTS = [
     dict(
         display_id="#001",
-        title="Sanqaçal Sahili Neft Sızması",
-        location="Sanqaçal sahili",
+        title="Sangachal Coast Oil Spill",
+        location="Sangachal Coast",
         lat=40.15,
         lng=49.62,
         area_m2=1150,
@@ -22,21 +22,20 @@ DEMO_INCIDENTS = [
         port_id="sangachal",
         spill_source="Pipeline leak",
         detection_source="Sentinel-1 SAR",
-        estimated_cause="Ehtimal olunan pipeline leak — mütəxəssis təsdiqi tələb olunur",
+        estimated_cause="Possible pipeline leak — requires specialist confirmation",
         ai_summary=(
-            "Sentinel-1 SAR görüntüsündə Sanqaçal terminalının ixrac dəhlizi "
-            "yaxınlığında tünd siqnatura aşkarlandı. Morfoloji təhlil ləkənin "
-            "üstünlük təşkil edən CQ axını istiqamətində uzandığını göstərir. "
-            "Əməliyyata başlamazdan əvvəl insan təsdiqi tövsiyə olunur."
+            "Sentinel-1 SAR dark signature detected near Sangachal Terminal export "
+            "corridor. Morphological analysis suggests elongate slick aligned with "
+            "prevailing SW current. Recommend human confirmation before response deployment."
         ),
         human_decision="pending",
         review_status="PENDING",
-        response_status="İnsan yoxlaması gözlənilir",
+        response_status="Awaiting human review",
     ),
     dict(
         display_id="#002",
-        title="Bakı Limanı Neft Sızması",
-        location="Bakı Limanı",
+        title="Baku Port Oil Spill",
+        location="Baku Port",
         lat=40.37,
         lng=49.85,
         area_m2=420,
@@ -46,15 +45,15 @@ DEMO_INCIDENTS = [
         port_id="baku",
         spill_source="Port terminal",
         detection_source="Sentinel-1 SAR",
-        estimated_cause="Ehtimal olunan port terminal discharge — mütəxəssis təsdiqi tələb olunur",
+        estimated_cause="Possible port terminal discharge — requires specialist confirmation",
         ai_summary=(
-            "Bakı Limanı yaxınlaşma zonasında yüksək ehtimallı ləkə aşkarlandı. "
-            "Naxış terminal transfer qalıqlarına uyğun gəlir. Bərtdən 2 dəniz "
-            "mili radiusunda məhdudlaşdırma tövsiyə olunur."
+            "High-confidence slick detected inside Baku Port approaches. Pattern "
+            "consistent with terminal transfer residue. Containment recommended "
+            "within 2 nm of berth."
         ),
         human_decision="pending",
         review_status="PENDING",
-        response_status="Yeni aşkarlanıb — yoxlama gözlənilir",
+        response_status="Newly detected — awaiting review",
     ),
 ]
 
