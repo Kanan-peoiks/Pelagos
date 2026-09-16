@@ -37,11 +37,12 @@ trained model.** Nothing else in the backend needs to change for that.
   that calls this — click a point on the map, it fetches + analyzes +
   (maybe) creates an incident, live.
 - `COPERNICUS_CLIENT_ID` / `COPERNICUS_CLIENT_SECRET` (backend env vars,
-  see `.env.example`) are what `app/satellite.py` needs. **As of
-  2026-09-16 the project owner needs to regenerate these** — the old
-  values (that used to live in the frontend's `.env.local`) came back
-  "invalid_client" from Copernicus. Check with them before assuming this
-  part is broken on your end.
+  see `.env.example`) are what `app/satellite.py` needs — a fresh,
+  working OAuth client (Client Credentials flow) was created 2026-09-17
+  and confirmed working against the real Process API. If you ever see
+  "invalid_client" errors, the client may have expired (it's set to
+  expire, not "never expire") — check with the project owner before
+  assuming it's a code bug.
 
 ## 2. Your actual task
 
@@ -109,9 +110,9 @@ Render's free tier (what `seasentry-api` runs on) has limited CPU/RAM and
 ## 5. Existing pieces you can reuse
 
 - **`app/satellite.py`'s `fetch_sar_tile(lat, lng, half_width_deg)`** — the
-  real image fetch. Returns raw PNG bytes (single-band VV grayscale). If
-  your model wants a different band/polarization or a larger tile, this is
-  the one place to change the Process API request.
+  real image fetch. Returns raw PNG bytes (3-band VV/VH/contrast, dB-scaled
+  — see section 1). If your model wants different bands/scaling or a
+  larger tile, this is the one place to change the Process API request.
 - **`detectionSource`** is already set to `"Sentinel-1 SAR"` for anything
   this pipeline creates (as opposed to `"Manual report"`, which the
   dashboard's own manual-incident feature uses) — nothing to change there.
