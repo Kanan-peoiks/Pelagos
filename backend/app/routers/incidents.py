@@ -109,7 +109,7 @@ def create_incident_row(db: Session, payload: schemas.IncidentCreate) -> models.
         sar_overlay_base64=payload.sar_overlay_base64,
         human_decision="pending",
         review_status="PENDING",
-        response_status="Yeni aşkarlanıb — yoxlama gözlənilir",
+        response_status="Newly detected — awaiting review",
         affected_vessel_ids=[],
     )
     db.add(incident)
