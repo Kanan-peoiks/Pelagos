@@ -20,6 +20,7 @@ import {
   FileSpreadsheet,
   FileText,
   Satellite,
+  X,
 } from "lucide-react";
 
 type SavedReport = {
@@ -65,6 +66,36 @@ function ReportsContent() {
   const [scanLogs, setScanLogs] = useState<ScanLog[]>([]);
   const [scanLogsLoading, setScanLogsLoading] = useState(true);
   const [expandedScan, setExpandedScan] = useState<ScanLog | null>(null);
+  const [expandedScanPlace, setExpandedScanPlace] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!expandedScan) {
+      setExpandedScanPlace(null);
+      return;
+    }
+    let cancelled = false;
+    setExpandedScanPlace(null);
+    // Reverse-geocode via Nominatim (OpenStreetMap) so the reviewer sees a
+    // real place name, not just raw coordinates — the browser's own Referer
+    // header satisfies Nominatim's usage policy for client-side apps.
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${expandedScan.lat}&lon=${expandedScan.lng}&zoom=10&addressdetails=1`
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const a = data.address || {};
+        const place = a.city || a.town || a.village || a.county || a.state || null;
+        const label = [place, a.country].filter(Boolean).join(", ");
+        setExpandedScanPlace(label || data.display_name || null);
+      })
+      .catch(() => {
+        if (!cancelled) setExpandedScanPlace(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedScan?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -522,7 +553,7 @@ function ReportsContent() {
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: "min(600px, calc(100vw - 32px))",
+                width: "min(420px, calc(100vw - 32px))",
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--glass-border)",
                 borderRadius: 12,
@@ -530,15 +561,48 @@ function ReportsContent() {
                 zIndex: 101,
               }}
             >
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedScan(null)}
+                  aria-label={t.common.close}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    border: "1px solid var(--glass-border)",
+                    background: "var(--surface-muted)",
+                    color: "var(--text-primary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <X size={18} strokeWidth={2.25} />
+                </button>
+              </div>
               {expandedScan.sarImageBase64 && (
                 <img
                   src={`data:image/png;base64,${expandedScan.sarImageBase64}`}
                   alt=""
-                  style={{ width: "100%", borderRadius: 8, marginBottom: 14 }}
+                  style={{
+                    display: "block",
+                    width: 220,
+                    maxWidth: "100%",
+                    margin: "0 auto 14px",
+                    borderRadius: 8,
+                  }}
                 />
               )}
               <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                <Row label={t.reports.scanCoordinates} value={`${expandedScan.lat.toFixed(4)}°N, ${expandedScan.lng.toFixed(4)}°E`} />
+                <Row
+                  label={t.reports.scanCoordinates}
+                  value={`${expandedScan.lat.toFixed(4)}°N, ${expandedScan.lng.toFixed(4)}°E${
+                    expandedScanPlace ? ` (${expandedScanPlace})` : ""
+                  }`}
+                />
                 <Row label={t.reports.scanWhen} value={`${formatDateTimeAZT(expandedScan.createdAt)} AZT`} />
                 <Row
                   label={t.reports.scanResult}
@@ -550,23 +614,6 @@ function ReportsContent() {
                 />
                 {expandedScan.requestedBy && <Row label={t.reports.scanRequestedBy} value={expandedScan.requestedBy} />}
               </div>
-              <button
-                type="button"
-                onClick={() => setExpandedScan(null)}
-                style={{
-                  width: "100%",
-                  marginTop: 16,
-                  padding: "10px 14px",
-                  borderRadius: 8,
-                  border: "1px solid var(--glass-border)",
-                  background: "transparent",
-                  color: "var(--text-primary)",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                {t.reports.close}
-              </button>
             </div>
           </>
         )}
