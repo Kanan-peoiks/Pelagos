@@ -5,9 +5,19 @@ admin tooling. See the [root README](../README.md) for the full picture
 (architecture, frontend, roles, roadmap); this file is a backend-specific
 quickstart and endpoint reference.
 
-The `/detect` endpoint is a placeholder for the ML teammate's oil-spill
-model — see [`ML_INTEGRATION.md`](./ML_INTEGRATION.md) for the exact
-contract and recommendations.
+The `/detect` endpoint fetches a real Sentinel-1 SAR tile for a point
+(`app/satellite.py`) and runs a multi-band oil-spill detector over it
+(`app/spill_detect.py`): it decodes the tile back to real dB backscatter,
+masks land and vessels, estimates the local sea background, and scores dark
+candidate regions on damping contrast, interior texture, edge sharpness and
+shape. Clearing the confidence threshold creates a real incident through the
+same path manual reports use, so it flows into the normal review queue.
+
+This is a classical computer-vision detector, not a trained model, and its
+confidence is capped accordingly — see
+[`ML_INTEGRATION.md`](./ML_INTEGRATION.md) for the contract and for the
+three places a trained model can take over (including `SPILL_MODEL_URL`,
+which routes inference to a separately hosted model with no code change).
 
 ## Local setup
 
@@ -74,7 +84,8 @@ sent, and no account is auto-promoted to admin.
 ### Other
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| POST | `/detect` | — | **Stub** — 503 with an "in development" message until the ML model is wired in |
+| POST | `/detect` | Operator/admin | Fetch a Sentinel-1 tile for `{lat, lng}` (optional `fromDate`/`toDate`) and analyse it; creates an incident if confidence clears the threshold |
+| GET | `/detect/history` | Any signed-in | Every scan ever run, most recent first — including the ones that found nothing, each with the tile that was fetched |
 | GET | `/health` | — | Render health check |
 
 Response JSON uses the same camelCase field names as the frontend's
