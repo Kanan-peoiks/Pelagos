@@ -97,7 +97,7 @@ function normalizeIncident(raw: Record<string, unknown>): Incident {
 
 type ApplyActionInput = {
   incidentId: string;
-  action: "confirm" | "reject" | "escalate" | "mark_cleaning";
+  action: "confirm" | "reject" | "escalate" | "mark_cleaning" | "resolve";
   note?: string;
   operatorName?: string;
 };
@@ -200,6 +200,16 @@ function applyActionToIncident(
         responseStatus: "Cleaning in progress — field team assigned",
         humanDecisionNote:
           note || "Response approved. Cleaning marked as started.",
+      };
+    case "resolve":
+      return {
+        ...incident,
+        ...base,
+        status: "resolved",
+        reviewStatus: "RESOLVED",
+        humanDecision: "resolved",
+        responseStatus: "Resolved — cleanup complete",
+        humanDecisionNote: note || "Cleanup confirmed complete by human specialist.",
       };
     default:
       return incident;

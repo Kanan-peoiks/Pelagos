@@ -82,11 +82,11 @@ class VerifyTwoFactorRequest(CamelModel):
 
 RiskLevel = Literal["HIGH", "MEDIUM", "LOW"]
 IncidentStatus = Literal["detected", "under_review", "cleaning", "resolved", "rejected"]
-ReviewStatus = Literal["PENDING", "CONFIRMED", "REJECTED", "ESCALATED", "CLEANING"]
+ReviewStatus = Literal["PENDING", "CONFIRMED", "REJECTED", "ESCALATED", "CLEANING", "RESOLVED"]
 HumanDecision = Literal[
-    "pending", "confirmed_spill", "false_positive", "response_approved", "monitoring", "escalated"
+    "pending", "confirmed_spill", "false_positive", "response_approved", "monitoring", "escalated", "resolved"
 ]
-DecisionAction = Literal["confirm", "reject", "escalate", "mark_cleaning"]
+DecisionAction = Literal["confirm", "reject", "escalate", "mark_cleaning", "resolve"]
 
 
 class IncidentCreate(CamelModel):

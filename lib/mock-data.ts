@@ -194,6 +194,7 @@ export const HUMAN_DECISION_LABEL: Record<string, string> = {
   response_approved: "Response approved",
   monitoring: "Continue monitoring",
   escalated: "Escalated to senior duty officer",
+  resolved: "Resolved — cleanup complete",
 };
 
 export function formatAreaM2(m2: number): string {
