@@ -16,7 +16,7 @@ export type IncidentStatus =
   | "resolved"
   | "rejected";
 
-export type ReviewStatus = "PENDING" | "CONFIRMED" | "REJECTED" | "ESCALATED" | "CLEANING";
+export type ReviewStatus = "PENDING" | "CONFIRMED" | "REJECTED" | "ESCALATED" | "CLEANING" | "RESOLVED";
 
 export type HumanDecision =
   | "pending"
@@ -24,7 +24,8 @@ export type HumanDecision =
   | "false_positive"
   | "response_approved"
   | "monitoring"
-  | "escalated";
+  | "escalated"
+  | "resolved";
 
 export type SpillSource =
   | "Pipeline leak"

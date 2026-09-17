@@ -88,6 +88,17 @@ async def _collect(seconds: float, bbox: list[list[float]]) -> list[dict[str, An
                 await asyncio.wait_for(_listen(ws), timeout=seconds)
             except asyncio.TimeoutError:
                 pass
+    except websockets.exceptions.InvalidStatus as e:
+        # aisstream.io's free tier rate-limits connection attempts — this is
+        # not a bug on our end, and it happens easily during demoing/testing
+        # (repeated fetches in a short window). Give a clear, actionable
+        # message instead of the raw "HTTP 429" the library reports.
+        if e.response.status_code == 429:
+            raise AisFetchError(
+                "aisstream.io is rate-limiting connections right now (too many recent "
+                "requests to their free tier). Wait about a minute and try again."
+            ) from e
+        raise AisFetchError(f"Could not reach aisstream.io: {e}") from e
     except (OSError, websockets.exceptions.WebSocketException) as e:
         raise AisFetchError(f"Could not reach aisstream.io: {e}") from e
 
