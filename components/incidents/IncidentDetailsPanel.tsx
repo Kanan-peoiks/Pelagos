@@ -315,16 +315,20 @@ function generateIncidentPdf(
   if (incident.humanDecisionNote) line(`Notes: ${incident.humanDecisionNote}`);
   y += 4;
 
-  ensureSpace(30);
-  line("Response & cleanup", 13, true, 8);
-  line(`Team assigned: ${materials.team}`);
-  line(`Boom deployed: ${materials.boomMeters} m`);
-  line(`Sorbent used: ${materials.sorbentKg} kg (ratio: 1g ~ ${SORBENT_RATIO_G}g oil)`);
-  line(`Skimmer units: ${materials.skimmerUnits}`);
-  line(`Support vessels: ${materials.vesselCount}`);
-  line(`Estimated duration: ${materials.durationHours} h`);
-  line(`Estimated cost: $${materials.estimatedCostUsd.toLocaleString("en-US")}`);
-  y += 6;
+  // No response/cleanup plan for a dismissed detection — there's nothing to
+  // respond to, so materials/cost figures would be meaningless here.
+  if (incident.status !== "rejected") {
+    ensureSpace(30);
+    line("Response & cleanup", 13, true, 8);
+    line(`Team assigned: ${materials.team}`);
+    line(`Boom deployed: ${materials.boomMeters} m`);
+    line(`Sorbent used: ${materials.sorbentKg} kg (ratio: 1g ~ ${SORBENT_RATIO_G}g oil)`);
+    line(`Skimmer units: ${materials.skimmerUnits}`);
+    line(`Support vessels: ${materials.vesselCount}`);
+    line(`Estimated duration: ${materials.durationHours} h`);
+    line(`Estimated cost: $${materials.estimatedCostUsd.toLocaleString("en-US")}`);
+    y += 6;
+  }
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "italic");
@@ -1169,8 +1173,11 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                 </Section>
               )}
 
-              {!pending && live.status !== "rejected" && (
-                <Section title={t.incidentDetail.responseReport} icon={<ListChecks size={14} />}>
+              {!pending && (
+                <Section
+                  title={live.status === "rejected" ? t.incidentDetail.dismissalReport : t.incidentDetail.responseReport}
+                  icon={<ListChecks size={14} />}
+                >
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <Field label={t.incidentDetail.incidentLabel}>
                       {live.displayId} · {live.location}
@@ -1180,62 +1187,66 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                     <Field label={t.incidentDetail.reportDate}>{formatDateTimeAZT(new Date().toISOString())} AZT</Field>
                   </div>
 
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                      {t.incidentDetail.equipmentCrew}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <Field label={t.incidentDetail.boomDeployed}>{materials.boomMeters} m</Field>
-                      <Field label={t.incidentDetail.sorbentRequired}>
-                        {materials.sorbentKg} kg
-                        <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
-                          {t.incidentDetail.sorbentRatioNote(SORBENT_RATIO_G, materials.oilMassKg)}
-                        </span>
-                      </Field>
-                      <Field label={t.incidentDetail.skimmerUnits}>{materials.skimmerUnits}</Field>
-                      <Field label={t.incidentDetail.supportVessels}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <Anchor size={12} /> {materials.vesselCount}
-                        </span>
-                      </Field>
-                      <Field label={t.incidentDetail.teamAssigned}>{materials.team}</Field>
-                      <Field label={t.incidentDetail.estimatedDuration}>{materials.durationHours} h</Field>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                      {t.incidentDetail.responsePhases}
-                    </div>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      {[
-                        { phase: t.incidentDetail.phaseMobilization, done: true },
-                        { phase: t.incidentDetail.phaseContainment, done: true },
-                        { phase: t.incidentDetail.phaseRecovery, done: live.status === "resolved" || live.status === "cleaning" },
-                        { phase: t.incidentDetail.phaseSiteRestoration, done: live.status === "resolved" },
-                      ].map((p) => (
-                        <div key={p.phase} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                          {p.done ? (
-                            <CheckCircle2 size={12} color="var(--accent)" />
-                          ) : (
-                            <Loader2 size={12} color="var(--text-tertiary)" />
-                          )}
-                          <span style={{ color: p.done ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                            {p.phase}
-                          </span>
+                  {live.status !== "rejected" && (
+                    <>
+                      <div style={{ marginTop: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
+                          {t.incidentDetail.equipmentCrew}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label={t.incidentDetail.boomDeployed}>{materials.boomMeters} m</Field>
+                          <Field label={t.incidentDetail.sorbentRequired}>
+                            {materials.sorbentKg} kg
+                            <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
+                              {t.incidentDetail.sorbentRatioNote(SORBENT_RATIO_G, materials.oilMassKg)}
+                            </span>
+                          </Field>
+                          <Field label={t.incidentDetail.skimmerUnits}>{materials.skimmerUnits}</Field>
+                          <Field label={t.incidentDetail.supportVessels}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <Anchor size={12} /> {materials.vesselCount}
+                            </span>
+                          </Field>
+                          <Field label={t.incidentDetail.teamAssigned}>{materials.team}</Field>
+                          <Field label={t.incidentDetail.estimatedDuration}>{materials.durationHours} h</Field>
+                        </div>
+                      </div>
 
-                  <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: "var(--surface-muted)" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
-                      <DollarSign size={13} /> {t.incidentDetail.estimatedResponseCost}
-                    </span>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
-                      ${materials.estimatedCostUsd.toLocaleString("en-US")}
-                    </span>
-                  </div>
+                      <div style={{ marginTop: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
+                          {t.incidentDetail.responsePhases}
+                        </div>
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {[
+                            { phase: t.incidentDetail.phaseMobilization, done: true },
+                            { phase: t.incidentDetail.phaseContainment, done: true },
+                            { phase: t.incidentDetail.phaseRecovery, done: live.status === "resolved" || live.status === "cleaning" },
+                            { phase: t.incidentDetail.phaseSiteRestoration, done: live.status === "resolved" },
+                          ].map((p) => (
+                            <div key={p.phase} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                              {p.done ? (
+                                <CheckCircle2 size={12} color="var(--accent)" />
+                              ) : (
+                                <Loader2 size={12} color="var(--text-tertiary)" />
+                              )}
+                              <span style={{ color: p.done ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+                                {p.phase}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: "var(--surface-muted)" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+                          <DollarSign size={13} /> {t.incidentDetail.estimatedResponseCost}
+                        </span>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
+                          ${materials.estimatedCostUsd.toLocaleString("en-US")}
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {canAct && (
                     <button
