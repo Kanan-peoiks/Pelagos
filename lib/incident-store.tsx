@@ -124,7 +124,7 @@ type IncidentStoreValue = {
   aiAnalyses: ReturnType<typeof buildAiAnalyses>;
   responseOps: ReturnType<typeof buildResponseOps>;
   getIncidentById: (id: string) => Incident | undefined;
-  applyHumanAction: (input: ApplyActionInput) => void;
+  applyHumanAction: (input: ApplyActionInput) => Promise<{ ok: boolean; error?: string }>;
   createIncident: (input: ManualIncidentInput) => Promise<CreateIncidentResult>;
   /** Injects an incident the caller already created through some other
    * endpoint (e.g. POST /detect's real-imagery scan) into local state, so it
@@ -231,7 +231,7 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const applyHumanAction = useCallback((input: ApplyActionInput) => {
+  const applyHumanAction = useCallback(async (input: ApplyActionInput) => {
     // The live-simulation incident only ever exists in local state.
     if (input.incidentId === LIVE_INCIDENT_ID) {
       setIncidents((prev) =>
@@ -246,28 +246,34 @@ export function IncidentStoreProvider({ children }: { children: ReactNode }) {
             : inc
         )
       );
-      return;
+      return { ok: true };
     }
 
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/incidents/${encodeURIComponent(input.incidentId)}/decision`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: input.action, note: input.note }),
-          }
-        );
-        if (!res.ok) throw new Error(`Decision failed (${res.status})`);
-        const updated = normalizeIncident(await res.json());
-        setIncidents((prev) =>
-          prev.map((inc) => (inc.id === updated.id ? updated : inc))
-        );
-      } catch (err) {
-        console.error("applyHumanAction failed:", err);
+    try {
+      const res = await fetch(
+        `/api/incidents/${encodeURIComponent(input.incidentId)}/decision`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: input.action, note: input.note }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || `Decision failed (${res.status})`);
       }
-    })();
+      const updated = normalizeIncident(await res.json());
+      setIncidents((prev) =>
+        prev.map((inc) => (inc.id === updated.id ? updated : inc))
+      );
+      return { ok: true };
+    } catch (err) {
+      console.error("applyHumanAction failed:", err);
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Could not reach the backend.",
+      };
+    }
   }, []);
 
   const getIncidentById = useCallback(
