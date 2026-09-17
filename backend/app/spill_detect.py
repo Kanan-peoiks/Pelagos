@@ -102,9 +102,14 @@ def analyze_tile(png_bytes: bytes, lat: float, half_width_deg: float) -> Detecti
 
     return DetectionResult(
         found=True,
-        area_m2=round(area_m2, 1),
-        ai_probability=ai_probability,
-        mask_fraction=round(best_size_px / total_px, 5),
-        elongation=round(elongation, 2),
+        # numpy scalars (from pixels.mean()/.std(), ys.max(), etc.) leak
+        # through this arithmetic — DetectionResult's `float` type hints
+        # aren't enforced at runtime, and a stray np.float64 crashes psycopg2
+        # when it later hits a raw (non-Pydantic) insert, e.g. ScanLog below.
+        # Cast explicitly here so every caller gets real Python floats.
+        area_m2=float(round(area_m2, 1)),
+        ai_probability=float(ai_probability),
+        mask_fraction=float(round(best_size_px / total_px, 5)),
+        elongation=float(round(elongation, 2)),
         bbox_px=(int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())),
     )
