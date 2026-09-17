@@ -47,12 +47,13 @@ function VesselsContent() {
   const [liveState, setLiveState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [liveVessels, setLiveVessels] = useState<LiveVessel[]>([]);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [liveRegion, setLiveRegion] = useState<keyof typeof t.vessels.regions>("caspian");
 
   const fetchLiveAis = async () => {
     setLiveState("loading");
     setLiveError(null);
     try {
-      const res = await fetch("/api/vessels/live", { cache: "no-store" });
+      const res = await fetch(`/api/vessels/live?region=${liveRegion}`, { cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setLiveState("error");
@@ -260,32 +261,57 @@ function VesselsContent() {
               <Satellite size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
               {t.vessels.liveAisTitle}
             </span>
-            <button
-              type="button"
-              onClick={fetchLiveAis}
-              disabled={liveState === "loading"}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: "1px solid var(--glass-border)",
-                background: liveState === "loading" ? "var(--surface-muted)" : "var(--accent)",
-                color: liveState === "loading" ? "var(--text-secondary)" : "var(--bg-elevated)",
-                fontSize: 11.5,
-                fontWeight: 650,
-                cursor: liveState === "loading" ? "default" : "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              {liveState === "loading" ? <Loader2 size={13} className="spinner" /> : <Radar size={13} />}
-              {liveState === "loading" ? t.vessels.fetchingLive : t.vessels.fetchLive}
-            </button>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-secondary)" }}>
+                {t.vessels.regionLabel}
+                <select
+                  value={liveRegion}
+                  onChange={(e) => setLiveRegion(e.target.value as keyof typeof t.vessels.regions)}
+                  disabled={liveState === "loading"}
+                  style={{
+                    padding: "5px 8px",
+                    borderRadius: 8,
+                    border: "1px solid var(--glass-border)",
+                    background: "var(--card-surface)",
+                    color: "var(--text-primary)",
+                    fontSize: 11.5,
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {(Object.keys(t.vessels.regions) as (keyof typeof t.vessels.regions)[]).map((key) => (
+                    <option key={key} value={key}>
+                      {t.vessels.regions[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={fetchLiveAis}
+                disabled={liveState === "loading"}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--glass-border)",
+                  background: liveState === "loading" ? "var(--surface-muted)" : "var(--accent)",
+                  color: liveState === "loading" ? "var(--text-secondary)" : "var(--bg-elevated)",
+                  fontSize: 11.5,
+                  fontWeight: 650,
+                  cursor: liveState === "loading" ? "default" : "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {liveState === "loading" ? <Loader2 size={13} className="spinner" /> : <Radar size={13} />}
+                {liveState === "loading" ? t.vessels.fetchingLive : t.vessels.fetchLive}
+              </button>
+            </div>
           </div>
           <div className="panel-body" style={{ padding: 16, display: "grid", gap: 10 }}>
             <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
-              {t.vessels.liveAisHint}
+              {t.vessels.liveAisHint(t.vessels.regions[liveRegion])}
             </p>
 
             {liveState === "error" && (

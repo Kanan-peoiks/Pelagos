@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { authHeaders, backendUrl } from "@/lib/server/backend";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   let backend: string;
   try {
     backend = backendUrl();
@@ -14,11 +14,13 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
+  const region = request.nextUrl.searchParams.get("region") || "caspian";
+
   let res: Response;
   try {
     // The backend holds a ~20s live AIS subscription open before replying —
     // give this proxy plenty of headroom.
-    res = await fetch(`${backend}/vessels/live`, {
+    res = await fetch(`${backend}/vessels/live?region=${encodeURIComponent(region)}`, {
       headers,
       cache: "no-store",
       signal: AbortSignal.timeout(40_000),

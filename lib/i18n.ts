@@ -243,8 +243,16 @@ export const translations = {
       liveAisSubtitle: "Real vessel transponder positions via aisstream.io — not the demo register above.",
       fetchLive: "Fetch Live Positions",
       fetchingLive: "Listening for live positions (~20s)…",
-      liveAisHint:
-        "Opens a real ~20s AIS listening window over the Caspian Sea. Coverage depends on volunteer-operated receivers in range — a quiet result doesn't mean the feed is broken, just that no covered vessel transmitted during that window.",
+      regionLabel: "Region",
+      regions: {
+        caspian: "Caspian Sea",
+        english_channel: "English Channel",
+        gibraltar: "Strait of Gibraltar",
+        singapore: "Singapore Strait",
+        hormuz: "Strait of Hormuz",
+      },
+      liveAisHint: (region: string) =>
+        `Opens a real ~20s AIS listening window over ${region}. Coverage depends on volunteer-operated receivers in range — a quiet result doesn't mean the feed is broken, just that no covered vessel transmitted during that window.`,
       liveAisEmpty: "No real AIS transmissions received in this window. Try again in a moment.",
       liveAisError: (msg: string) => `Live AIS fetch failed: ${msg}`,
       liveAisCount: (n: number) => `${n} live vessel${n === 1 ? "" : "s"}`,
@@ -882,8 +890,16 @@ export const translations = {
       liveAisSubtitle: "aisstream.io vasitəsilə real gəmi transponder mövqeləri — yuxarıdakı demo reyestr deyil.",
       fetchLive: "Canlı Mövqeləri Yoxla",
       fetchingLive: "Canlı mövqelər dinlənilir (~20san)…",
-      liveAisHint:
-        "Xəzər dənizi üzərində real ~20 saniyəlik AIS dinləmə pəncərəsi açır. Əhatə dairəsi həmin bölgədəki könüllü qəbulediciler şəbəkəsindən asılıdır — boş nəticə axının pozulduğunu göstərmir, sadəcə həmin pəncərədə əhatə olunan gəmi siqnal göndərməyib.",
+      regionLabel: "Bölgə",
+      regions: {
+        caspian: "Xəzər dənizi",
+        english_channel: "La-Manş boğazı",
+        gibraltar: "Cəbəllüttariq boğazı",
+        singapore: "Sinqapur boğazı",
+        hormuz: "Hörmüz boğazı",
+      },
+      liveAisHint: (region: string) =>
+        `${region} üzərində real ~20 saniyəlik AIS dinləmə pəncərəsi açır. Əhatə dairəsi həmin bölgədəki könüllü qəbulediciler şəbəkəsindən asılıdır — boş nəticə axının pozulduğunu göstərmir, sadəcə həmin pəncərədə əhatə olunan gəmi siqnal göndərməyib.`,
       liveAisEmpty: "Bu pəncərədə real AIS siqnalı alınmadı. Bir az sonra yenidən cəhd edin.",
       liveAisError: (msg: string) => `Canlı AIS sorğusu uğursuz oldu: ${msg}`,
       liveAisCount: (n: number) => `${n} canlı gəmi`,

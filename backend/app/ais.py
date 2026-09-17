@@ -19,9 +19,19 @@ from app.config import settings
 
 _STREAM_URL = "wss://stream.aisstream.io/v0/stream"
 
-# Generous Caspian Sea bounding box (covers Azerbaijani waters and beyond),
-# matching lib/mock-data.ts's CASPIAN_OVERVIEW focus.
-CASPIAN_BBOX = [[36.5, 46.5], [47.5, 54.5]]
+# Selectable regions for the "Live AIS Traffic" panel. Caspian is the
+# product's actual area of interest but is a genuinely low-traffic sea —
+# the others are some of the busiest shipping lanes in the world, useful for
+# confirming the live feed itself works when the Caspian window comes back
+# empty (sparse coverage there, not a bug — see AisFetchError's docstring).
+REGIONS: dict[str, list[list[float]]] = {
+    "caspian": [[36.5, 46.5], [47.5, 54.5]],
+    "english_channel": [[49.5, -2.5], [51.5, 2.0]],
+    "gibraltar": [[35.7, -6.2], [36.3, -4.8]],
+    "singapore": [[1.0, 103.4], [1.6, 104.5]],
+    "hormuz": [[25.5, 55.8], [27.0, 57.0]],
+}
+DEFAULT_REGION = "caspian"
 
 
 class AisFetchError(Exception):
@@ -30,7 +40,7 @@ class AisFetchError(Exception):
     window" — that's a normal, empty result."""
 
 
-async def _collect(seconds: float) -> list[dict[str, Any]]:
+async def _collect(seconds: float, bbox: list[list[float]]) -> list[dict[str, Any]]:
     if not settings.aisstream_api_key:
         raise AisFetchError("aisstream.io API key is not configured (AISSTREAM_API_KEY).")
 
@@ -69,7 +79,7 @@ async def _collect(seconds: float) -> list[dict[str, Any]]:
                 json.dumps(
                     {
                         "APIKey": settings.aisstream_api_key,
-                        "BoundingBoxes": [CASPIAN_BBOX],
+                        "BoundingBoxes": [bbox],
                         "FilterMessageTypes": ["PositionReport"],
                     }
                 )
@@ -84,5 +94,10 @@ async def _collect(seconds: float) -> list[dict[str, Any]]:
     return list(positions.values())
 
 
-async def fetch_live_positions(seconds: float = 20.0) -> list[dict[str, Any]]:
-    return await _collect(seconds)
+async def fetch_live_positions(
+    seconds: float = 20.0, region: str = DEFAULT_REGION
+) -> list[dict[str, Any]]:
+    bbox = REGIONS.get(region)
+    if bbox is None:
+        raise AisFetchError(f"Unknown region: {region}")
+    return await _collect(seconds, bbox)
