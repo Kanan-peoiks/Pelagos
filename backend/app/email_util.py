@@ -29,7 +29,10 @@ def send_email(to: str, subject: str, html_body: str) -> None:
     message["To"] = to
     message.attach(MIMEText(html_body, "html"))
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+    # Explicit timeout: without one, a blocked/filtered outbound connection
+    # (some PaaS hosts restrict outbound SMTP ports) hangs the request
+    # forever instead of failing — this is a best-effort send either way.
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
         server.starttls()
         server.login(settings.smtp_user, settings.smtp_password)
         server.sendmail(settings.smtp_user, [to], message.as_string())
