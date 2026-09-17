@@ -594,6 +594,8 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
 
   const { wind, sea, estimate: sourceEstimate, loading: weatherLoading } = useSpillSourceEstimate(live);
   const [pdfState, setPdfState] = useState<"idle" | "generating" | "ready">("idle");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actingOn, setActingOn] = useState<"confirm" | "reject" | "escalate" | "mark_cleaning" | null>(null);
 
   const generatePdf = (materials: ResponseMaterials) => {
     if (pdfState !== "idle" || !live) return;
@@ -609,14 +611,20 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
     setPdfState("idle");
   }, [live?.id]);
 
-  const run = (action: "confirm" | "reject" | "escalate" | "mark_cleaning") => {
-    if (!live) return;
+  const run = async (action: "confirm" | "reject" | "escalate" | "mark_cleaning") => {
+    if (!live || actingOn) return;
     const user = getCurrentUser();
-    applyHumanAction({
+    setActionError(null);
+    setActingOn(action);
+    const result = await applyHumanAction({
       incidentId: live.id,
       action,
       operatorName: user?.name || "Operator",
     });
+    setActingOn(null);
+    if (!result.ok) {
+      setActionError(result.error || t.incidentDetail.decisionFailed);
+    }
   };
 
   return (
@@ -1063,20 +1071,27 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                 )}
 
                 {canAct && pending && (
-                  <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <button type="button" style={actionBtnStyle("primary")} onClick={() => run("confirm")}>
-                      <CheckCircle2 size={13} /> {t.incidentDetail.confirmIncident}
-                    </button>
-                    <button type="button" style={actionBtnStyle("danger")} onClick={() => run("reject")}>
-                      <XCircle size={13} /> {t.incidentDetail.rejectIncident}
-                    </button>
-                    <button type="button" style={actionBtnStyle("warn")} onClick={() => run("escalate")}>
-                      <AlertTriangle size={13} /> {t.incidentDetail.escalateAction}
-                    </button>
-                    <button type="button" style={actionBtnStyle("neutral")} onClick={() => run("mark_cleaning")}>
-                      <Droplets size={13} /> {t.incidentDetail.markForCleaning}
-                    </button>
-                  </div>
+                  <>
+                    <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <button type="button" disabled={!!actingOn} style={actionBtnStyle("primary")} onClick={() => run("confirm")}>
+                        <CheckCircle2 size={13} /> {t.incidentDetail.confirmIncident}
+                      </button>
+                      <button type="button" disabled={!!actingOn} style={actionBtnStyle("danger")} onClick={() => run("reject")}>
+                        <XCircle size={13} /> {t.incidentDetail.rejectIncident}
+                      </button>
+                      <button type="button" disabled={!!actingOn} style={actionBtnStyle("warn")} onClick={() => run("escalate")}>
+                        <AlertTriangle size={13} /> {t.incidentDetail.escalateAction}
+                      </button>
+                      <button type="button" disabled={!!actingOn} style={actionBtnStyle("neutral")} onClick={() => run("mark_cleaning")}>
+                        <Droplets size={13} /> {t.incidentDetail.markForCleaning}
+                      </button>
+                    </div>
+                    {actionError && (
+                      <div className="auth-error" role="alert" style={{ marginTop: 10 }}>
+                        {actionError}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {canAct && !pending && live.status !== "resolved" && live.status !== "rejected" && live.status !== "cleaning" && (
