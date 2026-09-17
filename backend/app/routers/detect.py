@@ -18,6 +18,7 @@ would erode trust in the human-review workflow.
 import base64
 import io
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException
 from PIL import Image, ImageDraw
@@ -95,6 +96,7 @@ def detect(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_operator),
 ):
+    fetch_start = time.perf_counter()
     try:
         tile = fetch_sar_tile(
             payload.lat,
@@ -106,8 +108,11 @@ def detect(
     except SatelliteFetchError as e:
         logger.warning("Satellite fetch failed for (%s, %s): %s", payload.lat, payload.lng, e)
         raise HTTPException(status_code=502, detail=f"Could not fetch satellite imagery: {e}") from e
+    fetch_ms = round((time.perf_counter() - fetch_start) * 1000)
 
+    analyze_start = time.perf_counter()
     result = analyze_tile(tile, payload.lat, HALF_WIDTH_DEG)
+    analyze_ms = round((time.perf_counter() - analyze_start) * 1000)
 
     if not result.found or result.ai_probability < DETECTION_THRESHOLD:
         db.add(
@@ -163,6 +168,11 @@ def detect(
             ),
             sar_image_base64=original_b64,
             sar_overlay_base64=overlay_b64,
+            texture_pct=result.texture_pct,
+            edge_pct=result.edge_pct,
+            contrast_pct=result.contrast_pct,
+            fetch_ms=fetch_ms,
+            analyze_ms=analyze_ms,
         ),
     )
 

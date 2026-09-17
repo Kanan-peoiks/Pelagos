@@ -8,6 +8,7 @@ import {
   formatDateTimeAZT,
   HUMAN_DECISION_LABEL,
   getVesselById,
+  haversineKm,
 } from "@/lib/mock-data";
 import type { Incident } from "@/lib/types";
 import {
@@ -60,38 +61,72 @@ import {
   Scale,
 } from "lucide-react";
 
-/** Deterministic mock confidence sub-scores + processing pipeline, shown only
- * in the expanded full-page view. */
+/** Confidence sub-scores + processing pipeline, shown only in the expanded
+ * full-page view. Uses the incident's real per-feature scores and real
+ * fetch/analyze timings (backend/app/spill_detect.py's texture_pct/edge_pct/
+ * contrast_pct, routers/detect.py's fetch_ms/analyze_ms) when present — only
+ * incidents created via a real POST /detect scan have them. Seeded/manually-
+ * reported incidents predate that data existing at all, so they fall back to
+ * sub-scores jittered *around the real aiProbability* (not independent
+ * random numbers, so the on-screen "Composite" still matches the actual
+ * model confidence shown elsewhere on this panel) and show no pipeline
+ * timings rather than fabricated ones. */
 function deriveAiDeepDive(incident: Incident, t: Translations) {
-  const seed = hashString(incident.id + "-deep");
-  const texture = 72 + (seed % 24);
-  const edge = 68 + ((seed >> 3) % 28);
-  const spectral = 75 + ((seed >> 6) % 20);
+  const real = Math.round(incident.aiProbability * 100);
+  const hasRealFeatures =
+    incident.texturePct != null && incident.edgePct != null && incident.contrastPct != null;
+
+  let texture: number;
+  let edge: number;
+  let contrast: number;
+  if (hasRealFeatures) {
+    texture = incident.texturePct!;
+    edge = incident.edgePct!;
+    contrast = incident.contrastPct!;
+  } else {
+    const seed = hashString(incident.id + "-deep");
+    const jitter = (shift: number, spread: number) => {
+      const offset = ((seed >> shift) % (spread * 2 + 1)) - spread;
+      return Math.max(0, Math.min(100, real + offset));
+    };
+    texture = jitter(0, 10);
+    edge = jitter(4, 14);
+    contrast = jitter(8, 8);
+  }
+
+  const pipeline =
+    incident.fetchMs != null && incident.analyzeMs != null
+      ? [
+          { step: t.incidentDetail.pipelineSatelliteFetch, ms: incident.fetchMs },
+          { step: t.incidentDetail.pipelineAnalysis, ms: incident.analyzeMs },
+        ]
+      : [];
+
   return {
-    confidence: { texture, edge, spectral },
-    pipeline: [
-      { step: t.incidentDetail.pipelineSarPreprocessing, ms: 800 + (seed % 400) },
-      { step: t.incidentDetail.pipelineSpeckleFiltering, ms: 400 + (seed % 200) },
-      { step: t.incidentDetail.pipelineDarkSpotDetection, ms: 1200 + (seed % 600) },
-      { step: t.incidentDetail.pipelineShapeClassification, ms: 900 + (seed % 500) },
-      { step: t.incidentDetail.pipelineEnvironmentalCrossRef, ms: 500 + (seed % 300) },
-      { step: t.incidentDetail.pipelineConfidenceScoring, ms: 300 + (seed % 150) },
-    ],
+    confidence: { texture, edge, contrast, composite: real, isReal: hasRealFeatures },
+    pipeline,
   };
 }
 
-/** Pick up to 2 other incidents with a similar risk profile, for the "similar
- * historical incidents" comparison in the AI deep-dive. */
+/** Pick up to 2 other incidents most similar to this one, for the "similar
+ * historical incidents" comparison in the AI deep-dive. Similarity is a real
+ * deterministic score over each incident's actual coordinates, area and risk
+ * level — not a random number — weighted toward proximity (nearby incidents
+ * more plausibly share a common cause, e.g. the same pipeline corridor). */
 function findSimilarIncidents(incident: Incident, all: Incident[]) {
-  const seed = hashString(incident.id + "-similar");
   return all
-    .filter((i) => i.id !== incident.id && i.risk === incident.risk)
-    .slice(0, 2)
-    .map((i, idx) => ({
-      displayId: i.displayId,
-      location: i.location,
-      similarity: 82 + ((seed >> (idx * 4)) % 15),
-    }));
+    .filter((i) => i.id !== incident.id)
+    .map((i) => {
+      const distanceKm = haversineKm(incident.lat, incident.lng, i.lat, i.lng);
+      const proximityScore = Math.exp(-distanceKm / 100); // decays over ~100km
+      const areaRatio =
+        Math.min(incident.areaM2, i.areaM2) / Math.max(incident.areaM2, i.areaM2, 1);
+      const riskMatch = i.risk === incident.risk ? 1 : 0.5;
+      const similarity = Math.round((proximityScore * 0.5 + areaRatio * 0.3 + riskMatch * 0.2) * 100);
+      return { displayId: i.displayId, location: i.location, similarity };
+    })
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, 2);
 }
 
 /**
@@ -126,17 +161,28 @@ function findSimilarIncidents(incident: Incident, all: Incident[]) {
  *                                            neither field and fall back to the
  *                                            placeholder note (see ImagePlaceholder
  *                                            in the on-screen panel above).
+ *  - Confidence breakdown        REAL, when present — texture/edge/contrast sub-
+ *                                            scores come straight from spill_detect.py's
+ *                                            _blob_features() (see DetectionResult's
+ *                                            texture_pct/edge_pct/contrast_pct) for
+ *                                            incidents created via a real POST /detect
+ *                                            scan. Seeded/manually-reported incidents
+ *                                            predate that data existing, so they fall
+ *                                            back to sub-scores jittered around the
+ *                                            real aiProbability — see deriveAiDeepDive.
+ *  - Processing pipeline         REAL, when present — fetch_ms/analyze_ms are actual
+ *                                            wall-clock timings from routers/detect.py;
+ *                                            shown only when both exist, never fabricated.
  *  - Spill source & drift       PARTIAL   — `sourceEstimate` is a real computation
  *                                            (lib/spill-physics.ts's
  *                                            estimateSpillSource), but over a
  *                                            documented simplification: wind-only
  *                                            drift (3% of wind speed), no ocean-
- *                                            current data. `leakRateBbl`/`depthM`
- *                                            inside it are deterministic seeded
- *                                            guesses, not measurements — a real
- *                                            version would source flow rate from
- *                                            pipeline SCADA/telemetry and depth
- *                                            from bathymetric chart data.
+ *                                            current data. `leakRateBbl` is a pure
+ *                                            formula over the real detected area (no
+ *                                            random noise); `depthM` genuinely has no
+ *                                            real data source (no bathymetric chart
+ *                                            integration) and stays a seeded guess.
  *  - Human decision              REAL      — actually entered by an operator via
  *                                            the review actions (applyHumanAction
  *                                            in lib/incident-store.tsx) and
@@ -145,17 +191,20 @@ function findSimilarIncidents(incident: Incident, all: Incident[]) {
  *                                            (lib/spill-physics.ts's
  *                                            deriveResponseMaterials) over the
  *                                            incident's real area/oil-volume
- *                                            estimate and the real sorbent ratio
- *                                            (1g cotton ≈ 25-30g oil), not a live
- *                                            inventory system — team/vessel
- *                                            assignment is not yet wired to any
- *                                            real dispatch system.
+ *                                            estimate: boom length from the slick's
+ *                                            real perimeter, skimmer/vessel counts
+ *                                            scaled from the real recovered-volume
+ *                                            estimate, and the real sorbent ratio
+ *                                            (1g cotton ≈ 25-30g oil) — no random
+ *                                            noise left in any of these. Team
+ *                                            assignment is still an illustrative
+ *                                            rotation — no real dispatch system exists.
  *
  * Not yet in this report at all, for when they're built:
  *  - Real AIS-sourced vessel corroboration (aisstream.io — not integrated).
- *  - A ML confidence breakdown beyond the single probability number (the
- *    on-screen texture/edge/spectral gauges are also deterministic mock
- *    sub-scores — see deriveAiDeepDive above — not a real model's internals).
+ *  - Spill source attribution (SOCAR/BP/Others) is fixed, illustrative
+ *    percentages — deriveSourceAttribution — genuinely unconfirmable without
+ *    real investigation/pipeline-ownership records this system doesn't have.
  */
 function generateIncidentPdf(
   incident: Incident,
@@ -266,16 +315,20 @@ function generateIncidentPdf(
   if (incident.humanDecisionNote) line(`Notes: ${incident.humanDecisionNote}`);
   y += 4;
 
-  ensureSpace(30);
-  line("Response & cleanup", 13, true, 8);
-  line(`Team assigned: ${materials.team}`);
-  line(`Boom deployed: ${materials.boomMeters} m`);
-  line(`Sorbent used: ${materials.sorbentKg} kg (ratio: 1g ~ ${SORBENT_RATIO_G}g oil)`);
-  line(`Skimmer units: ${materials.skimmerUnits}`);
-  line(`Support vessels: ${materials.vesselCount}`);
-  line(`Estimated duration: ${materials.durationHours} h`);
-  line(`Estimated cost: $${materials.estimatedCostUsd.toLocaleString("en-US")}`);
-  y += 6;
+  // No response/cleanup plan for a dismissed detection — there's nothing to
+  // respond to, so materials/cost figures would be meaningless here.
+  if (incident.status !== "rejected") {
+    ensureSpace(30);
+    line("Response & cleanup", 13, true, 8);
+    line(`Team assigned: ${materials.team}`);
+    line(`Boom deployed: ${materials.boomMeters} m`);
+    line(`Sorbent used: ${materials.sorbentKg} kg (ratio: 1g ~ ${SORBENT_RATIO_G}g oil)`);
+    line(`Skimmer units: ${materials.skimmerUnits}`);
+    line(`Support vessels: ${materials.vesselCount}`);
+    line(`Estimated duration: ${materials.durationHours} h`);
+    line(`Estimated cost: $${materials.estimatedCostUsd.toLocaleString("en-US")}`);
+    y += 6;
+  }
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "italic");
@@ -759,7 +812,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
                       <Field label={t.incidentDetail.estimatedVolume}>~{impact.volumeBbl} bbl</Field>
-                      <Field label={t.incidentDetail.modelVersion}>{impact.modelVersion}</Field>
+                      <Field label={t.incidentDetail.detectionMethod}>{t.incidentDetail.detectionMethodValue}</Field>
                       <Field label={t.incidentDetail.driftForecast24h}>
                         {t.incidentDetail.driftToward(impact.driftKm24h, impact.driftCompass, impact.driftHeading)}
                         {wind && (
@@ -771,13 +824,19 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                     </div>
 
                     <div style={{ marginTop: 20 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 10 }}>
-                        {t.incidentDetail.detectionConfidenceBreakdown}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)" }}>
+                          {t.incidentDetail.detectionConfidenceBreakdown}
+                        </div>
+                        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: deep.confidence.isReal ? "var(--accent)" : "var(--text-tertiary)" }}>
+                          {deep.confidence.isReal ? t.incidentDetail.measured : t.incidentDetail.illustrative}
+                        </span>
                       </div>
                       <ConfidenceGauges
                         texture={deep.confidence.texture}
                         edge={deep.confidence.edge}
-                        spectral={deep.confidence.spectral}
+                        contrast={deep.confidence.contrast}
+                        composite={deep.confidence.composite}
                       />
                     </div>
 
@@ -808,24 +867,26 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                       <ResponseOptionsBar data={deriveResponseOptions(live, materials, t)} />
                     </div>
 
-                    <div style={{ marginTop: 20 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                        {t.incidentDetail.processingPipeline}
+                    {deep.pipeline.length > 0 && (
+                      <div style={{ marginTop: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
+                          {t.incidentDetail.processingPipeline}
+                        </div>
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {deep.pipeline.map((step) => (
+                            <div key={step.step} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12 }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-primary)" }}>
+                                <CheckCircle2 size={12} color="var(--accent)" />
+                                {step.step}
+                              </span>
+                              <span style={{ color: "var(--text-tertiary)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
+                                {(step.ms / 1000).toFixed(1)}s
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {deep.pipeline.map((step) => (
-                          <div key={step.step} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12 }}>
-                            <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-primary)" }}>
-                              <CheckCircle2 size={12} color="var(--accent)" />
-                              {step.step}
-                            </span>
-                            <span style={{ color: "var(--text-tertiary)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
-                              {(step.ms / 1000).toFixed(1)}s
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    )}
 
                     {similar.length > 0 && (
                       <div style={{ marginTop: 20 }}>
@@ -1112,8 +1173,11 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                 </Section>
               )}
 
-              {!pending && live.status !== "rejected" && (
-                <Section title={t.incidentDetail.responseReport} icon={<ListChecks size={14} />}>
+              {!pending && (
+                <Section
+                  title={live.status === "rejected" ? t.incidentDetail.dismissalReport : t.incidentDetail.responseReport}
+                  icon={<ListChecks size={14} />}
+                >
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <Field label={t.incidentDetail.incidentLabel}>
                       {live.displayId} · {live.location}
@@ -1123,62 +1187,66 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                     <Field label={t.incidentDetail.reportDate}>{formatDateTimeAZT(new Date().toISOString())} AZT</Field>
                   </div>
 
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                      {t.incidentDetail.equipmentCrew}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <Field label={t.incidentDetail.boomDeployed}>{materials.boomMeters} m</Field>
-                      <Field label={t.incidentDetail.sorbentRequired}>
-                        {materials.sorbentKg} kg
-                        <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
-                          {t.incidentDetail.sorbentRatioNote(SORBENT_RATIO_G, materials.oilMassKg)}
-                        </span>
-                      </Field>
-                      <Field label={t.incidentDetail.skimmerUnits}>{materials.skimmerUnits}</Field>
-                      <Field label={t.incidentDetail.supportVessels}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <Anchor size={12} /> {materials.vesselCount}
-                        </span>
-                      </Field>
-                      <Field label={t.incidentDetail.teamAssigned}>{materials.team}</Field>
-                      <Field label={t.incidentDetail.estimatedDuration}>{materials.durationHours} h</Field>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
-                      {t.incidentDetail.responsePhases}
-                    </div>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      {[
-                        { phase: t.incidentDetail.phaseMobilization, done: true },
-                        { phase: t.incidentDetail.phaseContainment, done: true },
-                        { phase: t.incidentDetail.phaseRecovery, done: live.status === "resolved" || live.status === "cleaning" },
-                        { phase: t.incidentDetail.phaseSiteRestoration, done: live.status === "resolved" },
-                      ].map((p) => (
-                        <div key={p.phase} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                          {p.done ? (
-                            <CheckCircle2 size={12} color="var(--accent)" />
-                          ) : (
-                            <Loader2 size={12} color="var(--text-tertiary)" />
-                          )}
-                          <span style={{ color: p.done ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                            {p.phase}
-                          </span>
+                  {live.status !== "rejected" && (
+                    <>
+                      <div style={{ marginTop: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
+                          {t.incidentDetail.equipmentCrew}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label={t.incidentDetail.boomDeployed}>{materials.boomMeters} m</Field>
+                          <Field label={t.incidentDetail.sorbentRequired}>
+                            {materials.sorbentKg} kg
+                            <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: 4 }}>
+                              {t.incidentDetail.sorbentRatioNote(SORBENT_RATIO_G, materials.oilMassKg)}
+                            </span>
+                          </Field>
+                          <Field label={t.incidentDetail.skimmerUnits}>{materials.skimmerUnits}</Field>
+                          <Field label={t.incidentDetail.supportVessels}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <Anchor size={12} /> {materials.vesselCount}
+                            </span>
+                          </Field>
+                          <Field label={t.incidentDetail.teamAssigned}>{materials.team}</Field>
+                          <Field label={t.incidentDetail.estimatedDuration}>{materials.durationHours} h</Field>
+                        </div>
+                      </div>
 
-                  <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: "var(--surface-muted)" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
-                      <DollarSign size={13} /> {t.incidentDetail.estimatedResponseCost}
-                    </span>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
-                      ${materials.estimatedCostUsd.toLocaleString("en-US")}
-                    </span>
-                  </div>
+                      <div style={{ marginTop: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>
+                          {t.incidentDetail.responsePhases}
+                        </div>
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {[
+                            { phase: t.incidentDetail.phaseMobilization, done: true },
+                            { phase: t.incidentDetail.phaseContainment, done: true },
+                            { phase: t.incidentDetail.phaseRecovery, done: live.status === "resolved" || live.status === "cleaning" },
+                            { phase: t.incidentDetail.phaseSiteRestoration, done: live.status === "resolved" },
+                          ].map((p) => (
+                            <div key={p.phase} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                              {p.done ? (
+                                <CheckCircle2 size={12} color="var(--accent)" />
+                              ) : (
+                                <Loader2 size={12} color="var(--text-tertiary)" />
+                              )}
+                              <span style={{ color: p.done ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+                                {p.phase}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: "var(--surface-muted)" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+                          <DollarSign size={13} /> {t.incidentDetail.estimatedResponseCost}
+                        </span>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
+                          ${materials.estimatedCostUsd.toLocaleString("en-US")}
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {canAct && (
                     <button

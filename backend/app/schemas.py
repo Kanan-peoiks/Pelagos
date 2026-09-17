@@ -108,6 +108,11 @@ class IncidentCreate(CamelModel):
     ai_summary: Optional[str] = None
     sar_image_base64: Optional[str] = None
     sar_overlay_base64: Optional[str] = None
+    texture_pct: Optional[float] = None
+    edge_pct: Optional[float] = None
+    contrast_pct: Optional[float] = None
+    fetch_ms: Optional[int] = None
+    analyze_ms: Optional[int] = None
 
 
 class IncidentOut(CamelModel):
@@ -129,6 +134,11 @@ class IncidentOut(CamelModel):
     ai_summary: Optional[str] = None
     sar_image_base64: Optional[str] = None
     sar_overlay_base64: Optional[str] = None
+    texture_pct: Optional[float] = None
+    edge_pct: Optional[float] = None
+    contrast_pct: Optional[float] = None
+    fetch_ms: Optional[int] = None
+    analyze_ms: Optional[int] = None
     human_decision: HumanDecision
     human_decision_note: Optional[str] = None
     human_decision_by: Optional[str] = None

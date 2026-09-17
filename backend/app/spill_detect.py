@@ -196,6 +196,14 @@ class DetectionResult:
     # col_min, col_max), inclusive — used to draw the "AI overlay" rectangle
     # on the same tile (see routers/detect.py). None when nothing was found.
     bbox_px: tuple[int, int, int, int] | None = None
+    # The three features _score_features() actually weighs most heavily,
+    # exposed so the frontend's confidence breakdown can show real numbers
+    # instead of a decorative stand-in. 0-100, "how oil-like this dimension
+    # looks" — see _feature_to_pct() below for the mapping from each
+    # feature's native (and very different) scale.
+    texture_pct: float = 0.0
+    edge_pct: float = 0.0
+    contrast_pct: float = 0.0
 
 
 def analyze_tile(png_bytes: bytes, lat: float, half_width_deg: float) -> DetectionResult:
@@ -268,7 +276,25 @@ def analyze_tile(png_bytes: bytes, lat: float, half_width_deg: float) -> Detecti
         mask_fraction=float(round(best["size_px"] / total_px, 5)),
         elongation=float(round(best["elongation"], 2)),
         bbox_px=best["bbox_px"],
+        texture_pct=_feature_to_pct(best["texture_ratio"], 0.15, 0.95, invert=True),
+        edge_pct=_feature_to_pct(best["edge_ratio"], 0.5, 3.0),
+        contrast_pct=_feature_to_pct(best["contrast_db"], 0.0, 8.0),
     )
+
+
+def _feature_to_pct(value: float, floor: float, ceiling: float, invert: bool = False) -> float:
+    """Maps one of _blob_features()'s raw measurements onto a 0-100 "how
+    oil-like is this dimension" scale for display, using the value ranges
+    documented above (texture_ratio oil 0.20-0.50, edge_ratio strong-damping
+    2.2-2.9, contrast_db oil 2.0-5.0) to anchor `floor`/`ceiling` (floor <
+    ceiling always; `invert=True` for texture_ratio, where *lower* is more
+    oil-like). Purely a display transform — _score_features() above is what
+    actually drives detection."""
+    span = ceiling - floor
+    frac = (value - floor) / span if span else 0.0
+    if invert:
+        frac = 1.0 - frac
+    return round(_clip(frac, 0.0, 1.0) * 100, 1)
 
 
 # --------------------------------------------------------------------- #
