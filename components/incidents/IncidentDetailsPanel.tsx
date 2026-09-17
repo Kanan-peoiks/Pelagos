@@ -648,7 +648,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
   const { wind, sea, estimate: sourceEstimate, loading: weatherLoading } = useSpillSourceEstimate(live);
   const [pdfState, setPdfState] = useState<"idle" | "generating" | "ready">("idle");
   const [actionError, setActionError] = useState<string | null>(null);
-  const [actingOn, setActingOn] = useState<"confirm" | "reject" | "escalate" | "mark_cleaning" | null>(null);
+  const [actingOn, setActingOn] = useState<"confirm" | "reject" | "escalate" | "mark_cleaning" | "resolve" | null>(null);
 
   const generatePdf = (materials: ResponseMaterials) => {
     if (pdfState !== "idle" || !live) return;
@@ -664,7 +664,7 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
     setPdfState("idle");
   }, [live?.id]);
 
-  const run = async (action: "confirm" | "reject" | "escalate" | "mark_cleaning") => {
+  const run = async (action: "confirm" | "reject" | "escalate" | "mark_cleaning" | "resolve") => {
     if (!live || actingOn) return;
     const user = getCurrentUser();
     setActionError(null);
@@ -1155,11 +1155,21 @@ export default function IncidentDetailsPanel({ incident, onClose, expanded, cont
                   </>
                 )}
 
-                {canAct && !pending && live.status !== "resolved" && live.status !== "rejected" && live.status !== "cleaning" && (
-                  <div style={{ marginTop: 12 }}>
-                    <button type="button" style={actionBtnStyle("neutral")} onClick={() => run("mark_cleaning")}>
-                      <Droplets size={13} /> {t.incidentDetail.markCleaningStarted}
+                {canAct && !pending && (live.status === "under_review" || live.status === "cleaning") && (
+                  <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: live.status === "under_review" ? "1fr 1fr" : "1fr", gap: 8 }}>
+                    {live.status === "under_review" && (
+                      <button type="button" disabled={!!actingOn} style={actionBtnStyle("neutral")} onClick={() => run("mark_cleaning")}>
+                        <Droplets size={13} /> {t.incidentDetail.markCleaningStarted}
+                      </button>
+                    )}
+                    <button type="button" disabled={!!actingOn} style={actionBtnStyle("primary")} onClick={() => run("resolve")}>
+                      <CheckCircle2 size={13} /> {t.incidentDetail.markResolved}
                     </button>
+                  </div>
+                )}
+                {actionError && !pending && (
+                  <div className="auth-error" role="alert" style={{ marginTop: 10 }}>
+                    {actionError}
                   </div>
                 )}
               </div>

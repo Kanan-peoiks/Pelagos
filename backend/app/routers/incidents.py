@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.deps import get_current_user, get_db, require_operator
-from app.slack_util import send_slack_incident_alert
+from app.slack_util import send_slack_escalation_alert, send_slack_incident_alert
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
@@ -172,6 +172,13 @@ _DECISION_TRANSITIONS = {
         "response_status": "Cleaning in progress — field team assigned",
         "default_note": "Response approved. Cleaning marked as started.",
     },
+    "resolve": {
+        "status": "resolved",
+        "review_status": "RESOLVED",
+        "human_decision": "resolved",
+        "response_status": "Resolved — cleanup complete",
+        "default_note": "Cleanup confirmed complete by human specialist.",
+    },
 }
 
 
@@ -200,4 +207,13 @@ def apply_decision(
 
     db.commit()
     db.refresh(incident)
+
+    if payload.action == "escalate":
+        try:
+            send_slack_escalation_alert(incident, current_user.name)
+        except Exception:
+            logging.getLogger("seasentry.slack").exception(
+                "Failed to send Slack escalation alert for incident %s", incident.id
+            )
+
     return incident
