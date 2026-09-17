@@ -1,0 +1,6 @@
+# Test-only dependencies. Deliberately separate from requirements.txt so
+# Render's free-tier deploy doesn't install them.
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   pytest
+-r requirements.txt
+pytest==9.1.1
