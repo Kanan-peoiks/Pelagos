@@ -111,14 +111,19 @@ function tierColor(score: number) {
 export function ConfidenceGauges({
   texture,
   edge,
-  spectral,
+  contrast,
+  composite,
 }: {
   texture: number;
   edge: number;
-  spectral: number;
+  contrast: number;
+  /** The real detection confidence (incident.aiProbability), shown as the
+   * headline number — not recomputed from the illustrative sub-scores above,
+   * so it always matches the "Model Confidence" shown elsewhere on this
+   * incident. */
+  composite: number;
 }) {
   const { t } = useLanguage();
-  const composite = Math.round(spectral * 0.4 + texture * 0.35 + edge * 0.25);
   const recommendation =
     composite >= 80
       ? t.charts.recommendationStrong
@@ -131,7 +136,7 @@ export function ConfidenceGauges({
       <div style={{ display: "flex", justifyContent: "space-around", gap: 12, flexWrap: "wrap" }}>
         <Gauge label={t.charts.gaugeTexture} value={texture} color={tierColor(texture)} />
         <Gauge label={t.charts.gaugeEdge} value={edge} color={tierColor(edge)} />
-        <Gauge label={t.charts.gaugeSpectral} value={spectral} color={tierColor(spectral)} />
+        <Gauge label={t.charts.gaugeContrast} value={contrast} color={tierColor(contrast)} />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minWidth: 104 }}>
           <div style={{ fontSize: 30, fontWeight: 800, color: tierColor(composite), lineHeight: 1 }}>
             {composite}%

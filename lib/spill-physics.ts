@@ -134,7 +134,9 @@ export function estimateSpillSource(
     downwindCompass: compassLabel(downwindBearingDeg),
     hoursElapsed: Math.round(hoursElapsed * 10) / 10,
     confidencePct,
-    leakRateBbl: Math.max(1, Math.round((incident.areaM2 / 40) + (seed % 6))),
+    leakRateBbl: Math.max(1, Math.round(incident.areaM2 / 40)),
+    // No bathymetric chart data source available — genuinely not derivable
+    // from anything real here, unlike the fields above.
     depthM: 8 + (seed % 42),
   };
 }
@@ -199,6 +201,20 @@ export type ResponseMaterials = {
   estimatedCostUsd: number;
 };
 
+// A boom encircles the slick's perimeter, not its area — a circle's
+// perimeter is 2*sqrt(pi*area), scaled by an operational margin since real
+// deployments aren't drawn tight against the edge. Replaces a previous
+// formula that scaled boom length directly with area (physically wrong: a
+// 10x larger slick has a ~3.16x larger perimeter, not a 10x one).
+const BOOM_CONTAINMENT_MARGIN = 1.5;
+// One skimmer unit's typical daily recovery throughput, and how many units
+// one support vessel can run — real fleet-sizing rules of thumb, used here
+// to scale deterministically with the real recovered-volume estimate
+// instead of picking a random unit count.
+const BBL_PER_SKIMMER_UNIT = 50;
+const SKIMMER_UNITS_PER_VESSEL = 2;
+const MAX_SKIMMER_UNITS = 6;
+
 export function deriveResponseMaterials(
   incident: Incident,
   oilVolumeBbl: number
@@ -206,9 +222,12 @@ export function deriveResponseMaterials(
   const seed = hashString(incident.id);
   const oilMassKg = Math.round(oilVolumeBbl * OIL_KG_PER_BBL);
   const sorbentKg = Math.max(1, Math.round(oilMassKg / SORBENT_RATIO_G));
-  const boomMeters = Math.round(incident.areaM2 * 0.35 + (seed % 40));
-  const skimmerUnits = 1 + (seed % 3);
-  const vesselCount = 1 + (seed % 2);
+  const boomMeters = Math.round(2 * Math.sqrt(Math.PI * incident.areaM2) * BOOM_CONTAINMENT_MARGIN);
+  const skimmerUnits = Math.min(
+    MAX_SKIMMER_UNITS,
+    Math.max(1, Math.ceil(oilVolumeBbl / BBL_PER_SKIMMER_UNIT))
+  );
+  const vesselCount = Math.max(1, Math.ceil(skimmerUnits / SKIMMER_UNITS_PER_VESSEL));
   const estimatedCostUsd = Math.round(
     boomMeters * 12 + sorbentKg * 4 + skimmerUnits * 1500 + vesselCount * 2200
   );
@@ -218,8 +237,10 @@ export function deriveResponseMaterials(
     oilMassKg,
     skimmerUnits,
     vesselCount,
+    // No real dispatch/staffing system exists to assign an actual team —
+    // this rotates deterministically through a fixed illustrative roster.
     team: RESPONSE_TEAMS[seed % RESPONSE_TEAMS.length],
-    durationHours: 3 + (seed % 6),
+    durationHours: Math.max(2, Math.round(oilVolumeBbl / 15) + 2),
     estimatedCostUsd,
   };
 }
@@ -233,8 +254,14 @@ export type AiImpact = {
   driftHeading: number;
   driftCompass: string;
   driftKm24h: number;
-  modelVersion: string;
 };
+
+/** ~0.1mm average film thickness for a weathered slick — a commonly-used
+ * rule of thumb for a rough volume estimate from surface area alone (real
+ * thickness varies enormously by oil type/weathering; this is a documented
+ * simplification, not a measurement). */
+const OIL_FILM_THICKNESS_M = 0.0001;
+const M3_PER_BBL = 0.159;
 
 export function deriveAiImpact(incident: Incident, wind: WindContext | null): AiImpact {
   const seed = hashString(incident.id + "-impact");
@@ -244,11 +271,12 @@ export function deriveAiImpact(incident: Incident, wind: WindContext | null): Ai
     : 0.3 + (seed % 9) / 10;
 
   return {
-    volumeBbl: Math.max(1, Math.round(incident.areaM2 * 0.012 + (seed % 8))),
+    // Pure formula over the real detected area — no random noise added, per
+    // OIL_FILM_THICKNESS_M's assumed slick thickness (see above).
+    volumeBbl: Math.max(1, Math.round((incident.areaM2 * OIL_FILM_THICKNESS_M) / M3_PER_BBL)),
     driftHeading: Math.round(downwindHeading),
     driftCompass: compassLabel(downwindHeading),
     driftKm24h: Math.round(driftSpeedKmh * 24 * 10) / 10,
-    modelVersion: `sar-slick-v${1 + (seed % 3)}.${seed % 10}`,
   };
 }
 

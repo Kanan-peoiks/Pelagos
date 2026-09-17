@@ -71,6 +71,15 @@ export type Incident = {
    * fetched. See components/incidents/IncidentDetailsPanel.tsx. */
   sarImageBase64?: string;
   sarOverlayBase64?: string;
+  /** Real per-feature scores (0-100) from the classical detector and real
+   * wall-clock timings, both from the same POST /detect scan as the SAR
+   * images above — undefined for seeded/manually-reported incidents where
+   * no analysis actually ran. See spill_detect.py's _feature_to_pct(). */
+  texturePct?: number;
+  edgePct?: number;
+  contrastPct?: number;
+  fetchMs?: number;
+  analyzeMs?: number;
   humanDecision: HumanDecision;
   humanDecisionNote?: string;
   humanDecisionBy?: string;

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Float, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -63,6 +63,15 @@ class Incident(Base):
     # reported incidents, which never had a real image fetched.
     sar_image_base64 = Column(Text, nullable=True)
     sar_overlay_base64 = Column(Text, nullable=True)
+    # Real per-feature scores from spill_detect.py's classical detector (0-100,
+    # "how oil-like this dimension looks" — see _feature_to_pct there) and
+    # real wall-clock timings from routers/detect.py, both null for seeded/
+    # manually-reported incidents where no analysis actually ran.
+    texture_pct = Column(Float, nullable=True)
+    edge_pct = Column(Float, nullable=True)
+    contrast_pct = Column(Float, nullable=True)
+    fetch_ms = Column(Integer, nullable=True)
+    analyze_ms = Column(Integer, nullable=True)
 
 
 class ScanLog(Base):
