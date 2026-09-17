@@ -65,6 +65,28 @@ class Incident(Base):
     sar_overlay_base64 = Column(Text, nullable=True)
 
 
+class ScanLog(Base):
+    """One row per POST /detect call, whether or not it found anything —
+    unlike incidents (only created above the confidence threshold), this is
+    a full history so a "nothing found here" scan isn't just discarded.
+    Keeps the fetched tile so the actual imagery can be reviewed later."""
+
+    __tablename__ = "scan_logs"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    lat = Column(Float, nullable=False)
+    lng = Column(Float, nullable=False)
+    from_date = Column(String, nullable=True)
+    to_date = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    found = Column(Boolean, nullable=False, default=False)
+    ai_probability = Column(Float, nullable=False, default=0.0)
+    area_m2 = Column(Float, nullable=False, default=0.0)
+    sar_image_base64 = Column(Text, nullable=True)
+    incident_id = Column(String, nullable=True)
+    requested_by = Column(String, nullable=True)
+
+
 class Report(Base):
     """A saved snapshot of a generated incident response report, so past
     reports can be browsed later instead of only existing as a downloaded

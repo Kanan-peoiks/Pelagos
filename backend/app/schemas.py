@@ -250,6 +250,26 @@ class AiAccuracyOut(CamelModel):
     avg_confidence_false_positive: Optional[float] = None
 
 
+# ---- Scan history (POST /detect log) -------------------------------------
+
+
+class ScanLogOut(CamelModel):
+    id: str
+    lat: float
+    lng: float
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    created_at: datetime
+    found: bool
+    ai_probability: float
+    area_m2: float
+    sar_image_base64: Optional[str] = None
+    incident_id: Optional[str] = None
+    requested_by: Optional[str] = None
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+
 # ---- Live AIS (vessels) -------------------------------------------------
 
 

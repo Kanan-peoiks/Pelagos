@@ -21,10 +21,11 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from PIL import Image, ImageDraw
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.deps import get_db, require_operator
+from app.deps import get_db, get_current_user, require_operator
 from app.routers.incidents import create_incident_row
 from app.satellite import SatelliteFetchError, fetch_sar_tile
 from app.spill_detect import DetectionResult, analyze_tile
@@ -69,11 +70,30 @@ class DetectResponse(schemas.CamelModel):
     incident: schemas.IncidentOut | None = None
 
 
+@router.get("/history", response_model=list[schemas.ScanLogOut])
+def scan_history(
+    limit: int = 30,
+    db: Session = Depends(get_db),
+    _current_user: models.User = Depends(get_current_user),
+):
+    """Every POST /detect call ever made, most recent first — including the
+    ones that found nothing, each with the real tile that was fetched. Read-
+    only for any signed-in role, same reasoning as GET /incidents/ai-accuracy:
+    a transparency view, not management data."""
+    rows = (
+        db.query(models.ScanLog)
+        .order_by(desc(models.ScanLog.created_at))
+        .limit(min(limit, 100))
+        .all()
+    )
+    return rows
+
+
 @router.post("", response_model=DetectResponse)
 def detect(
     payload: DetectRequest,
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(require_operator),
+    current_user: models.User = Depends(require_operator),
 ):
     try:
         tile = fetch_sar_tile(
@@ -90,6 +110,20 @@ def detect(
     result = analyze_tile(tile, payload.lat, HALF_WIDTH_DEG)
 
     if not result.found or result.ai_probability < DETECTION_THRESHOLD:
+        db.add(
+            models.ScanLog(
+                lat=payload.lat,
+                lng=payload.lng,
+                from_date=payload.from_date,
+                to_date=payload.to_date,
+                found=False,
+                ai_probability=result.ai_probability if result.found else 0.0,
+                area_m2=result.area_m2 if result.found else 0.0,
+                sar_image_base64=base64.b64encode(tile).decode("ascii"),
+                requested_by=current_user.name,
+            )
+        )
+        db.commit()
         return DetectResponse(
             created=False,
             ai_probability=result.ai_probability if result.found else 0.0,
@@ -131,6 +165,23 @@ def detect(
             sar_overlay_base64=overlay_b64,
         ),
     )
+
+    db.add(
+        models.ScanLog(
+            lat=payload.lat,
+            lng=payload.lng,
+            from_date=payload.from_date,
+            to_date=payload.to_date,
+            found=True,
+            ai_probability=result.ai_probability,
+            area_m2=result.area_m2,
+            sar_image_base64=original_b64,
+            incident_id=incident.id,
+            requested_by=current_user.name,
+        )
+    )
+    db.commit()
+
     return DetectResponse(
         created=True,
         ai_probability=result.ai_probability,

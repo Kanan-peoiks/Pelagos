@@ -19,6 +19,7 @@ import {
   History,
   FileSpreadsheet,
   FileText,
+  Satellite,
 } from "lucide-react";
 
 type SavedReport = {
@@ -30,6 +31,21 @@ type SavedReport = {
   estimatedCostUsd: number;
   generatedBy: string;
   generatedAt: string;
+};
+
+type ScanLog = {
+  id: string;
+  lat: number;
+  lng: number;
+  fromDate?: string | null;
+  toDate?: string | null;
+  createdAt: string;
+  found: boolean;
+  aiProbability: number;
+  areaM2: number;
+  sarImageBase64?: string | null;
+  incidentId?: string | null;
+  requestedBy?: string | null;
 };
 
 export default function ReportsPage() {
@@ -46,6 +62,9 @@ function ReportsContent() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+  const [scanLogs, setScanLogs] = useState<ScanLog[]>([]);
+  const [scanLogsLoading, setScanLogsLoading] = useState(true);
+  const [expandedScan, setExpandedScan] = useState<ScanLog | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +76,22 @@ function ReportsContent() {
       .catch(() => {})
       .finally(() => {
         if (!cancelled) setReportsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/detect/history", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (!cancelled) setScanLogs(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setScanLogsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -379,6 +414,162 @@ function ReportsContent() {
             )}
           </div>
         </div>
+
+        <div className="panel panel-static" style={{ marginTop: 16 }}>
+          <div className="panel-header">
+            <span className="panel-title">
+              <Satellite size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
+              {t.reports.scanHistory}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+              {scanLogsLoading ? t.common.loading : t.reports.scanCount(scanLogs.length)}
+            </span>
+          </div>
+          <div className="panel-body">
+            <p style={{ margin: "0 0 14px", fontSize: 11.5, color: "var(--text-tertiary)" }}>
+              {t.reports.scanHistoryHint}
+            </p>
+            {!scanLogsLoading && scanLogs.length === 0 ? (
+              <div style={{ padding: "8px 0 20px", fontSize: 13, color: "var(--text-secondary)" }}>
+                {t.reports.noScansYet}
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {scanLogs.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setExpandedScan(s)}
+                    style={{
+                      display: "block",
+                      textAlign: "left",
+                      padding: 0,
+                      border: "1px solid var(--glass-border)",
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      background: "var(--surface-muted)",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {s.sarImageBase64 ? (
+                      <img
+                        src={`data:image/png;base64,${s.sarImageBase64}`}
+                        alt=""
+                        style={{ width: "100%", height: 100, objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: 100,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--text-tertiary)",
+                        }}
+                      >
+                        <Satellite size={20} />
+                      </div>
+                    )}
+                    <div style={{ padding: "8px 10px" }}>
+                      <div
+                        style={{
+                          display: "inline-block",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          marginBottom: 4,
+                          color: s.found ? "var(--color-high-text)" : "var(--text-secondary)",
+                          background: s.found ? "rgba(224,122,95,0.12)" : "var(--bg-base)",
+                        }}
+                      >
+                        {s.found ? t.reports.scanFound(Math.round(s.aiProbability * 100)) : t.reports.scanNotFound}
+                      </div>
+                      <div style={{ fontSize: 11, fontFamily: "ui-monospace, monospace", color: "var(--text-primary)" }}>
+                        {s.lat.toFixed(3)}°N, {s.lng.toFixed(3)}°E
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 2 }}>
+                        {formatDateTimeAZT(s.createdAt)} AZT
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {expandedScan && (
+          <>
+            <div
+              onClick={() => setExpandedScan(null)}
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100 }}
+            />
+            <div
+              role="dialog"
+              style={{
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "min(600px, calc(100vw - 32px))",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: 12,
+                padding: 20,
+                zIndex: 101,
+              }}
+            >
+              {expandedScan.sarImageBase64 && (
+                <img
+                  src={`data:image/png;base64,${expandedScan.sarImageBase64}`}
+                  alt=""
+                  style={{ width: "100%", borderRadius: 8, marginBottom: 14 }}
+                />
+              )}
+              <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                <Row label={t.reports.scanCoordinates} value={`${expandedScan.lat.toFixed(4)}°N, ${expandedScan.lng.toFixed(4)}°E`} />
+                <Row label={t.reports.scanWhen} value={`${formatDateTimeAZT(expandedScan.createdAt)} AZT`} />
+                <Row
+                  label={t.reports.scanResult}
+                  value={
+                    expandedScan.found
+                      ? t.reports.scanFound(Math.round(expandedScan.aiProbability * 100))
+                      : t.reports.scanNotFound
+                  }
+                />
+                {expandedScan.requestedBy && <Row label={t.reports.scanRequestedBy} value={expandedScan.requestedBy} />}
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedScan(null)}
+                style={{
+                  width: "100%",
+                  marginTop: 16,
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: "1px solid var(--glass-border)",
+                  background: "transparent",
+                  color: "var(--text-primary)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {t.reports.close}
+              </button>
+            </div>
+          </>
+        )}
 
         {previewOpen && (
           <>
